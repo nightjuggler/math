@@ -12,8 +12,9 @@ For example, the first few pairs (P, N) are (2, 4), (3, 8), (5, 16), (7, 20), (1
 
 (See, for example, `python primes.py maxevens 100000`)
 
-This suggests a sliding window approach to generating subsets of consecutive even numbers
-from subsets of consecutive primes. (See, for example, `python primes.py sliding 10000`)
+This suggests a sliding window approach to generating all even numbers as sums of two primes
+by generating subsets of consecutive even numbers from subsets of consecutive primes.
+(See, for example, `python primes.py sliding 10000`)
 
 This resulted from the following observations:
 
