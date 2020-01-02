@@ -65,9 +65,13 @@ def goldbach_sliding_window(max_number=10000):
 		if q[0] * 2 > even + 2:
 			break
 
+		j = len(q) - 1
+		while j != 0 and q[j] << 1 > even:
+			j -= 1
+
 		sums = []
 		for i, p1 in enumerate(q):
-			for p2 in q[i:]:
+			for p2 in q[i if i > j else j:]:
 				n = p1 + p2
 				if n > even:
 					sums.append(n)
