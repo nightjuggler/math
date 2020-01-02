@@ -10,7 +10,7 @@ N / P goes to 2 as P goes to infinity.
 
 For example, the first few pairs (P, N) are (2, 4), (3, 8), (5, 16), (7, 20), (11, 28), ...
 
-See, for example, `python primes.py maxevens 100000`
+(See, for example, `python primes.py maxevens 100000`)
 
 This suggests a sliding window approach to generating subsets of consecutive even numbers
 from subsets of consecutive primes. (See, for example, `python primes.py sliding 10000`)
@@ -25,10 +25,11 @@ Question: Is there always a pair q1 and q2 such that q1 is NOT equal to q2?
 
 (See, for example, `python primes.py modstats 100000 4`)
 
-<li>3 + (any prime that's 1 mod 6) can be written as the sum of two primes that are both 5 mod 6
-<li>3 + (any prime that's 5 mod 6 and > 5) can be written as the sum of two primes that are both 1 mod 6
+<li>3 + (any prime that's 1 mod 6) is the sum of two primes that are both 5 mod 6, and
 
-This means that every even number > 8 can be written as the sum of two primes > 3.
+3 + (any prime that's 5 mod 6 and > 5) is the sum of two primes that are both 1 mod 6.
+
+This means that every even number > 8 is the sum of two primes > 3.
 
 (See, for example, `python primes.py modstats 100000 6`)
 
