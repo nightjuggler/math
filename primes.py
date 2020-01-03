@@ -133,6 +133,9 @@ def goldbach_max_evens(max_number=10000):
 					max_evens[i] = n
 				break
 			i -= 1
+		else:
+			print n, "is not the sum of two primes!"
+			return
 		n -= 2
 
 	print "Averaging N/P ..."
@@ -152,7 +155,7 @@ def goldbach_max_evens(max_number=10000):
 			num_less_than_previous_n += 1
 
 		n_p = float(n) / p
-		if n_p > 2.5:
+		if n_p > 2.5 or n_p < 2.0:
 			print p, n, n_p
 
 		sum_n_p += n_p
