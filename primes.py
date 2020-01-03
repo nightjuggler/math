@@ -101,9 +101,13 @@ def goldbach_sliding_window(max_number=10000):
 
 	print "Done!", even
 
-def goldbach_max_evens(max_number=10000):
+def goldbach_max_evens(max_number=10000, n_p_threshold=2.5):
+
 	if not (isinstance(max_number, int) and max_number > 4):
 		print "The max_number parameter must be an integer > 4!"
+		return
+	if not (isinstance(n_p_threshold, (float, int)) and n_p_threshold >= 2):
+		print "The n_p_threshold parameter must be a number >= 2!"
 		return
 
 	if max_number % 2 == 1:
@@ -155,7 +159,7 @@ def goldbach_max_evens(max_number=10000):
 			num_less_than_previous_n += 1
 
 		n_p = float(n) / p
-		if n_p > 2.5 or n_p < 2.0:
+		if n_p >= n_p_threshold or n_p < 2.0:
 			print p, n, n_p
 
 		sum_n_p += n_p
@@ -310,15 +314,15 @@ def goldbach_mod_stats(num_evens=10000, mod=4, start_prime_index=1, version=2, d
 def ordinal(n):
 	return str(n) + ("th", "st", "nd", "rd", "th", "th", "th", "th", "th", "th")[n % 10]
 
-def parse_int(arg):
+def parse_number(arg, convert=int):
 	try:
-		return int(arg)
+		return convert(arg)
 	except ValueError:
 		return None
 
 def main(args):
 	commands = {
-		"maxevens": (goldbach_max_evens, [10000]),
+		"maxevens": (goldbach_max_evens, [10000, 2.5]),
 		"modstats": (goldbach_mod_stats, [10000, 4, 1, 2, [0]]),
 		"partitions": (print_goldbach_partitions, [14]),
 		"sliding": (goldbach_sliding_window, [10000]),
@@ -336,20 +340,30 @@ def main(args):
 		return
 
 	for i, (arg, param) in enumerate(zip(args, params)):
-		if isinstance(param, list):
+
+		if isinstance(param, int):
+			param = parse_number(arg)
+			if param is None:
+				print "The", ordinal(i+1), "parameter after the command must be an integer!"
+				return
+		elif isinstance(param, float):
+			param = parse_number(arg, float)
+			if param is None:
+				print "The", ordinal(i+1), "parameter after the command must be a number!"
+				return
+		elif isinstance(param, list):
 			param = []
 			for arg in arg.split(","):
-				arg = parse_int(arg)
+				arg = parse_number(arg)
 				if arg is None:
 					print "The", ordinal(i+1), ("parameter after the command must be "
 						"a comma-separated list of integers!")
 					return
 				param.append(arg)
 		else:
-			param = parse_int(arg)
-			if param is None:
-				print "The", ordinal(i+1), "parameter after the command must be an integer!"
-				return
+			print "Unable to parse the", ordinal(i+1), "parameter after the command!"
+			return
+
 		params[i] = param
 
 	function(*params)
