@@ -14,10 +14,10 @@ For example, the first few pairs (P, N) are (2, 4), (3, 8), (5, 16), (7, 20), (1
 
 (See, for example, `python primes.py maxevens 100000`)
 
-This suggests a sliding window approach to generating all even numbers as sums of two primes
+This suggests a sliding window approach to generating all even numbers > 2 as sums of two primes
 by generating subsets of consecutive even numbers from subsets of consecutive primes.
-(See, for example, `python primes.py sliding 50000` which shows this approach in action for
-even numbers up to 99,650.)
+(See, for example, `python primes.py sliding 50000` which runs such an algorithm to generate
+all even numbers from 4 to 99,650.)
 
 This resulted from observing correlations between sums of two primes of certain residue classes.
 
@@ -25,7 +25,7 @@ For example:
 
 <ol>
 <li>For any two primes P1 and P2, both 1 mod 4, there exists at least one pair of primes Q1 and Q2, both 3 mod 4,
-such that P1 + P2 = Q1 + Q2. (P1 can be equal to P2, and Q1 may be equal to Q2)
+such that P1 + P2 = Q1 + Q2. (P1 can be equal to P2, and Q1 may be equal to Q2.)
 
 (See, for example, `python primes.py modstats 100000 4`)
 
