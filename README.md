@@ -6,6 +6,8 @@ Currently testing the following observation/conjecture and its implications:
 
 For every prime P, there exists a threshold N such that every even number > N is the sum of two primes > P.
 
+N is the lowest such threshold, i.e. N itself is not the sum of two primes > P.
+
 N / P goes to 2 as P goes to infinity.
 
 For example, the first few pairs (P, N) are (2, 4), (3, 8), (5, 16), (7, 20), (11, 28), ...
@@ -17,13 +19,13 @@ by generating subsets of consecutive even numbers from subsets of consecutive pr
 (See, for example, `python primes.py sliding 50000` which shows this approach in action for
 even numbers up to 99,650.)
 
-This resulted from the following observations:
+This resulted from observing correlations between sums of two primes of certain residue classes.
+
+For example:
 
 <ol>
-<li>For any two primes p1 and p2, both 1 mod 4, there exists at least one pair of primes q1 and q2, both 3 mod 4,
-such that p1 + p2 = q1 + q2. (p1 can be equal to p2, and q1 can be equal to q2.)
-
-Question: Is there always a pair q1 and q2 such that q1 is NOT equal to q2?
+<li>For any two primes P1 and P2, both 1 mod 4, there exists at least one pair of primes Q1 and Q2, both 3 mod 4,
+such that P1 + P2 = Q1 + Q2. (P1 can be equal to P2, and Q1 may be equal to Q2)
 
 (See, for example, `python primes.py modstats 100000 4`)
 
