@@ -1,4 +1,5 @@
 import sys
+import time
 
 def init(max_number):
 	global primes
@@ -109,7 +110,6 @@ def goldbach_max_evens(max_number=10000):
 		max_number -= 1
 
 	init(max_number)
-
 	prime_index = len(primes) >> 1
 	half_max = max_number >> 1
 
@@ -172,7 +172,75 @@ def goldbach_max_evens(max_number=10000):
 	print "Average N/P:", sum_n_p / num_n_p
 	print "Number of N less than previous N:", num_less_than_previous_n
 
-def goldbach_mod_stats(num_evens=10000, mod=4, start_prime_index=1):
+def print_mod_count(mod, count):
+	num_primes = len(primes)
+	for i, n in enumerate(count):
+		if n > 0:
+			print "{} mod {}: {} ({:.2f}%)".format(i, mod, n, 100.0 * n / num_primes)
+
+def compute_mod_stats1(num_evens, mod):
+	evens = [0] * num_evens
+	mod_is_even = mod % 2 == 0
+
+	count = [0] * mod
+	prime_mods = [p % mod for p in primes]
+	for m in prime_mods:
+		count[m] += 1
+
+	print_mod_count(mod, count)
+
+	for i, (p1, m1) in enumerate(zip(primes, prime_mods)):
+		if i & 127 == 0:
+			print "\rComputing sums p1 + p2 where p1 =", p1, "and p2 >= p1 ...",
+			sys.stdout.flush()
+		for j, (p2, m2) in enumerate(zip(primes[i:], prime_mods[i:])):
+			k = ((p1 + p2) >> 1) - 3
+			if k >= num_evens:
+				if j == 0:
+					print "\nDone @ prime[{}] = {}".format(i, p1)
+					return evens
+				break
+
+			# When mod is 4, m1 + m2 can be 2 (1+1), 4 (1+3 or 3+1), or 6 (3+3)
+			if mod_is_even:
+				evens[k] |= 1 << (((m1 + m2) >> 1) - 1)
+			else:
+				evens[k] |= 1 << (m1 + m2)
+	return evens
+
+def compute_mod_stats2(num_evens, mod):
+	evens = [0] * num_evens
+	mod_is_even = mod % 2 == 0
+
+	count = [0] * mod
+	for p in primes:
+		count[p % mod] += 1
+
+	print_mod_count(mod, count)
+
+	for i, p1 in enumerate(primes):
+		m1 = p1 % mod
+		if i & 127 == 0:
+			print "\rComputing sums p1 + p2 where p1 =", p1, "and p2 >= p1 ...",
+			sys.stdout.flush()
+		for p2 in primes[i:]:
+			k = ((p1 + p2) >> 1) - 3
+			if k >= num_evens:
+				if p2 == p1:
+					print "\nDone @ prime[{}] = {}".format(i, p1)
+					return evens
+				break
+
+			# When mod is 4, m1 + m2 can be 2 (1+1), 4 (1+3 or 3+1), or 6 (3+3)
+			m2 = p2 % mod
+			if mod_is_even:
+				evens[k] |= 1 << (((m1 + m2) >> 1) - 1)
+			else:
+				evens[k] |= 1 << (m1 + m2)
+	return evens
+
+def goldbach_mod_stats(num_evens=10000, mod=4, start_prime_index=1, version=2, delete_prime_indices=()):
+
 	if not (isinstance(num_evens, int) and num_evens > 0):
 		print "The num_evens parameter must be an integer > 0!"
 		return
@@ -182,55 +250,43 @@ def goldbach_mod_stats(num_evens=10000, mod=4, start_prime_index=1):
 	if not (isinstance(start_prime_index, int) and start_prime_index > 0):
 		print "The start_prime_index parameter must be an integer > 0!"
 		return
+	if not isinstance(delete_prime_indices, (list, tuple)):
+		print "The delete_prime_indices parameter must be a list or tuple!"
+		return
+	for i in delete_prime_indices:
+		if not (isinstance(i, int) and i >= 0):
+			print "The delete_prime_indices parameter must be a list or tuple of integers >= 0!"
+			return
+
+	if version == 1:
+		compute_mod_stats = compute_mod_stats1
+	elif version == 2:
+		compute_mod_stats = compute_mod_stats2
+	else:
+		print "The version parameter must be 1 or 2!"
+		return
 
 	init(2 * (num_evens + 2)) # Add 2 since we're skipping the first two evens (2 and 4)
-	evens = [0] * num_evens
 
 	if start_prime_index == 1:
 		print "Deleting", primes[0]
-		del primes[0]
-#		for d, i in enumerate([5, 11, 13, 16, 18, 21]):
-#			p = primes[i - d]
-#			print "Deleting", p, "({} mod 4)".format(p % 4), "({} mod 6)".format(p % 6)
-#			del primes[i - d]
 	else:
 		print "Deleting the first", start_prime_index, "primes:", primes[:start_prime_index]
-		del primes[:start_prime_index]
+	del primes[:start_prime_index]
 
-	mod_is_even = mod % 2 == 0
-	prime_mods = [p % mod for p in primes]
-	count = [0] * mod
+	for diff, i in enumerate(delete_prime_indices, start=start_prime_index):
+		# For example 6,12,14,17,19,22 corresponds to the primes 17,41,47,61,71,83
+		if i >= start_prime_index:
+			p = primes[i - diff]
+			print "Deleting", p, "({} mod 4)".format(p % 4), "({} mod 6)".format(p % 6)
+			del primes[i - diff]
 
-	for m in prime_mods:
-		count[m] += 1
+	t1 = time.clock()
+	evens = compute_mod_stats(num_evens, mod)
+	t2 = time.clock()
+	print "Time:", t2 - t1
 
-	num_primes = float(len(primes))
-	for i, n in enumerate(count):
-		if n > 0:
-			print "{} mod {}: {} ({:.2f}%)".format(i, mod, n, 100 * n / num_primes)
-
-	done = False
-	for i, (p1, m1) in enumerate(zip(primes, prime_mods)):
-		if i & 127 == 0:
-			print "\rComputing sums p1 + p2 where p1 =", p1, "and p2 >= p1 ...",
-			sys.stdout.flush()
-		for j, (p2, m2) in enumerate(zip(primes[i:], prime_mods[i:])):
-			k = ((p1 + p2) >> 1) - 3
-			if k >= num_evens:
-				if j == 0:
-					done = True
-				break
-
-			# When mod is 4, m1 + m2 can be 2 (1+1), 4 (1+3 or 3+1), or 6 (3+3)
-			if mod_is_even:
-				evens[k] |= 1 << (((m1 + m2) >> 1) - 1)
-			else:
-				evens[k] |= 1 << (m1 + m2)
-		if done:
-			print "\nDone @ prime[{}] = {}".format(i, primes[i])
-			break
-
-	shift = mod - 1 if mod_is_even else 2 * mod - 1
+	shift = (1 + mod % 2) * mod - 1
 	count = [0] * (1 << shift)
 	cases = [[] for i in xrange(1 << shift)]
 	for i, n in enumerate(evens):
@@ -241,7 +297,6 @@ def goldbach_mod_stats(num_evens=10000, mod=4, start_prime_index=1):
 		else:
 			s[-1] = (i + 3) << 1
 
-	num_evens = float(num_evens)
 	prefix_spec = "{{:0{}b}}:".format(shift)
 	percent_spec = "({:.2f}%)"
 	for i, (n, s) in enumerate(zip(count, cases)):
@@ -250,16 +305,25 @@ def goldbach_mod_stats(num_evens=10000, mod=4, start_prime_index=1):
 			if n > 5:
 				s.insert(-1, "...")
 			s = "[{}]".format(", ".join(s))
-			print prefix_spec.format(i), n, percent_spec.format(100 * n / num_evens), s
+			print prefix_spec.format(i), n, percent_spec.format(100.0 * n / num_evens), s
+
+def ordinal(n):
+	return str(n) + ("th", "st", "nd", "rd", "th", "th", "th", "th", "th", "th")[n % 10]
+
+def parse_int(arg):
+	try:
+		return int(arg)
+	except ValueError:
+		return None
 
 def main(args):
 	commands = {
 		"maxevens": (goldbach_max_evens, [10000]),
-		"modstats": (goldbach_mod_stats, [10000, 4, 1]),
+		"modstats": (goldbach_mod_stats, [10000, 4, 1, 2, [0]]),
 		"partitions": (print_goldbach_partitions, [14]),
 		"sliding": (goldbach_sliding_window, [10000]),
 	}
-	command = args.pop(0)
+	command = args.pop(0) if args else "partitions"
 
 	if command not in commands:
 		print "Please enter a valid command!"
@@ -272,13 +336,21 @@ def main(args):
 		return
 
 	for i, (arg, param) in enumerate(zip(args, params)):
-		try:
-			params[i] = int(arg)
-		except ValueError:
-			i += 1
-			print "The {}{} parameter after the command must be an integer!".format(i,
-				["th", "st", "nd", "rd", "th", "th", "th", "th", "th", "th"][i % 10])
-			return
+		if isinstance(param, list):
+			param = []
+			for arg in arg.split(","):
+				arg = parse_int(arg)
+				if arg is None:
+					print "The", ordinal(i+1), ("parameter after the command must be "
+						"a comma-separated list of integers!")
+					return
+				param.append(arg)
+		else:
+			param = parse_int(arg)
+			if param is None:
+				print "The", ordinal(i+1), "parameter after the command must be an integer!"
+				return
+		params[i] = param
 
 	function(*params)
 
