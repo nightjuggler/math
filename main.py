@@ -32,7 +32,7 @@ def run_command(args, default_command, commands):
 			if param is None:
 				print "The", ordinal(i+1), "parameter after the command must be a number!"
 				return
-		elif isinstance(param, list):
+		elif isinstance(param, (list, tuple)):
 			param = []
 			for arg in arg.split(","):
 				arg = parse_number(arg)

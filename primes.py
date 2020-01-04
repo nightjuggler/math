@@ -18,40 +18,44 @@ def init(max_number):
 				is_prime[m] = False
 
 def check_residue_filter(residue_filter):
-	if not (isinstance(residue_filter, (list, tuple)) and len(residue_filter) == 2):
-		print "The residue_filter parameter must be a comma-separated pair of integers!"
+	if not (isinstance(residue_filter, (list, tuple)) and len(residue_filter) % 2 == 0):
+		print "The residue_filter parameter must be an even number of comma-separated integers!"
 		return False
-	residue, modulus = residue_filter
-	if (residue, modulus) == (None, None):
-		return True
-	if not (isinstance(residue, int) and residue >= 0):
-		print "The residue of the residue_filter parameter must be an integer >= 0!"
-		return False
-	if not (isinstance(modulus, int) and modulus > 1):
-		print "The modulus of the residue_filter parameter must be an integer > 1!"
-		return False
+	for i in xrange(0, len(residue_filter), 2):
+		residue = residue_filter[i]
+		modulus = residue_filter[i+1]
+		if not (isinstance(residue, int) and residue >= 0):
+			print "Each residue of the residue_filter parameter must be an integer >= 0!"
+			return False
+		if not (isinstance(modulus, int) and modulus > 1):
+			print "Each modulus of the residue_filter parameter must be an integer > 1!"
+			return False
+		if residue >= modulus:
+			print "Each residue of the residue_filter parameter must be less than the modulus!"
+			return
 	return True
 
-def filter_primes(residue, modulus):
+def filter_primes(residue_filter):
 	global primes
 
-	if (residue, modulus) == (None, None):
-		return
+	for i in xrange(0, len(residue_filter), 2):
+		residue = residue_filter[i]
+		modulus = residue_filter[i+1]
 
-	print "Deleting primes congruent to {} mod {}".format(residue, modulus)
+		print "Deleting primes congruent to {} mod {}".format(residue, modulus)
 
-	new_primes = []
-	for p in primes:
-		if p % modulus == residue:
-			is_prime[p] = False
-		else:
-			new_primes.append(p)
+		new_primes = []
+		for p in primes:
+			if p % modulus == residue:
+				is_prime[p] = False
+			else:
+				new_primes.append(p)
 
-	num_before = len(primes)
-	primes = new_primes
-	num_after = len(primes)
+		num_before = len(primes)
+		primes = new_primes
+		num_after = len(primes)
 
-	print "Deleted {} primes ({} - {})".format(num_before - num_after, num_before, num_after)
+		print "Deleted {} primes ({} - {})".format(num_before - num_after, num_before, num_after)
 
 def is_sum_of_two_primes(N):
 	# 1. From Goldbach's conjecture, we know every even number (> 2) is the sum of two primes.
@@ -137,7 +141,7 @@ def goldbach_sliding_window(max_number=10000):
 
 	print "Done!", even
 
-def goldbach_verify(max_number=10000, residue_filter=(None, None)):
+def goldbach_verify(max_number=10000, residue_filter=()):
 
 	if not (isinstance(max_number, int) and max_number >= 4):
 		print "The max_number parameter must be an integer >= 4!"
@@ -149,19 +153,28 @@ def goldbach_verify(max_number=10000, residue_filter=(None, None)):
 		max_number -= 1
 
 	init(max_number)
-	filter_primes(*residue_filter)
+	filter_primes(residue_filter)
 
 	n = max_number
 	half_n = n >> 1
-	prime_index = len(primes) >> 1
+	num_primes = len(primes)
+	prime_index = num_primes >> 1
 
-	while primes[prime_index + 1] < half_n:
+	if num_primes == 0:
+		print "There are no primes!"
+		return
+
+	while prime_index + 1 < num_primes and primes[prime_index + 1] < half_n:
 		prime_index += 1
 
 	print "Checking for a Goldbach partition for every even number from", n, "down to 4 ..."
 
 	while n > 2:
 		while primes[prime_index] > half_n:
+			if prime_index == 0:
+				print n, "(and lower) is not the sum of two primes!"
+				print "Done!"
+				return
 			prime_index -= 1
 		i = prime_index
 		while i >= 0:
@@ -175,10 +188,10 @@ def goldbach_verify(max_number=10000, residue_filter=(None, None)):
 
 	print "Done!"
 
-def goldbach_max_evens(max_number=10000, n_p_threshold=2.5, residue_filter=(None, None)):
+def goldbach_max_evens(max_number=10000, n_p_threshold=2.5, residue_filter=()):
 
-	if not (isinstance(max_number, int) and max_number > 4):
-		print "The max_number parameter must be an integer > 4!"
+	if not (isinstance(max_number, int) and max_number >= 4):
+		print "The max_number parameter must be an integer >= 4!"
 		return
 	if not (isinstance(n_p_threshold, (float, int)) and n_p_threshold >= 2):
 		print "The n_p_threshold parameter must be a number >= 2!"
@@ -190,15 +203,20 @@ def goldbach_max_evens(max_number=10000, n_p_threshold=2.5, residue_filter=(None
 		max_number -= 1
 
 	init(max_number)
-	filter_primes(*residue_filter)
+	filter_primes(residue_filter)
 
 	n = max_number
 	half_n = n >> 1
-	prime_index = len(primes) >> 1
+	num_primes = len(primes)
+	prime_index = num_primes >> 1
 
-	while primes[prime_index] > half_n:
+	if num_primes == 0:
+		print "There are no primes!"
+		return
+
+	while prime_index > 0 and primes[prime_index] > half_n:
 		prime_index -= 1
-	while primes[prime_index + 1] < half_n:
+	while prime_index + 1 < num_primes and primes[prime_index + 1] < half_n:
 		prime_index += 1
 
 	print "Computing max evens for {} primes (up to {}) ...".format(prime_index + 1, primes[prime_index])
@@ -206,6 +224,9 @@ def goldbach_max_evens(max_number=10000, n_p_threshold=2.5, residue_filter=(None
 
 	while n > 2:
 		while primes[prime_index] > half_n:
+			if prime_index == 0:
+				print n, "(and lower) is not the sum of two primes!"
+				return
 			prime_index -= 1
 		i = prime_index
 		while i >= 0:
@@ -409,7 +430,7 @@ def gen_decode_bits_v3(mod):
 	return shift, decode_bits
 
 def goldbach_mod_stats(num_evens=10000, mod=4, start_prime_index=1, version=3,
-	delete_prime_indices=(), residue_filter=(None, None)):
+	delete_prime_indices=(), residue_filter=()):
 
 	if not (isinstance(num_evens, int) and num_evens > 0):
 		print "The num_evens parameter must be an integer > 0!"
@@ -462,7 +483,7 @@ def goldbach_mod_stats(num_evens=10000, mod=4, start_prime_index=1, version=3,
 			print "Deleting", p, "({} mod 4)".format(p % 4), "({} mod 6)".format(p % 6)
 			del primes[i - diff]
 
-	filter_primes(*residue_filter)
+	filter_primes(residue_filter)
 
 	t1 = time.clock()
 	evens = compute_mod_stats(num_evens, mod)
@@ -494,9 +515,9 @@ def goldbach_mod_stats(num_evens=10000, mod=4, start_prime_index=1, version=3,
 if __name__ == "__main__":
 	import main
 	main.run_command(sys.argv[1:], "partitions", {
-		"maxevens": (goldbach_max_evens, [10000, 2.5, [None, None]]),
-		"modstats": (goldbach_mod_stats, [10000, 4, 1, 3, [], [None, None]]),
+		"maxevens": (goldbach_max_evens, [10000, 2.5, ()]),
+		"modstats": (goldbach_mod_stats, [10000, 4, 1, 3, (), ()]),
 		"partitions": (print_goldbach_partitions, [14]),
 		"sliding": (goldbach_sliding_window, [10000]),
-		"verify": (goldbach_verify, [10000, [None, None]]),
+		"verify": (goldbach_verify, [10000, ()]),
 	})
