@@ -491,63 +491,12 @@ def goldbach_mod_stats(num_evens=10000, mod=4, start_prime_index=1, version=3,
 
 			print decode_bits(i), n, percent(n, num_evens), s
 
-def ordinal(n):
-	return str(n) + ("th", "st", "nd", "rd", "th", "th", "th", "th", "th", "th")[n % 10]
-
-def parse_number(arg, convert=int):
-	try:
-		return convert(arg)
-	except ValueError:
-		return None
-
-def main(args):
-	commands = {
+if __name__ == "__main__":
+	import main
+	main.run_command(sys.argv[1:], "partitions", {
 		"maxevens": (goldbach_max_evens, [10000, 2.5, [None, None]]),
 		"modstats": (goldbach_mod_stats, [10000, 4, 1, 3, [], [None, None]]),
 		"partitions": (print_goldbach_partitions, [14]),
 		"sliding": (goldbach_sliding_window, [10000]),
 		"verify": (goldbach_verify, [10000, [None, None]]),
-	}
-	command = args.pop(0) if args else "partitions"
-
-	if command not in commands:
-		print "Please enter a valid command!"
-		return
-
-	function, params = commands[command]
-
-	if len(args) > len(params):
-		print "Too many parameters after the command!"
-		return
-
-	for i, (arg, param) in enumerate(zip(args, params)):
-
-		if isinstance(param, int):
-			param = parse_number(arg)
-			if param is None:
-				print "The", ordinal(i+1), "parameter after the command must be an integer!"
-				return
-		elif isinstance(param, float):
-			param = parse_number(arg, float)
-			if param is None:
-				print "The", ordinal(i+1), "parameter after the command must be a number!"
-				return
-		elif isinstance(param, list):
-			param = []
-			for arg in arg.split(","):
-				arg = parse_number(arg)
-				if arg is None:
-					print "The", ordinal(i+1), ("parameter after the command must be "
-						"a comma-separated list of integers!")
-					return
-				param.append(arg)
-		else:
-			print "Unable to parse the", ordinal(i+1), "parameter after the command!"
-			return
-
-		params[i] = param
-
-	function(*params)
-
-if __name__ == "__main__":
-	main(sys.argv[1:])
+	})
