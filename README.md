@@ -2,7 +2,7 @@
 
 A script for analyzing [Goldbach partitions](https://en.wikipedia.org/wiki/Goldbach's_conjecture).
 
-Currently testing the following observation/conjecture (December 31, 2019) and its implications:
+Currently testing the following observation/conjecture (12/31/2019) and its implications:
 
 For every prime P, there exists a threshold N such that every even number > N is the sum of two primes > P.
 
@@ -39,16 +39,29 @@ This means that every even number > 8 is the sum of two primes > 3.
 
 </ol>
 
-Further observations (January 3, 2020) (verified for all evens up to 50 million):
+Further observations (verified for all evens up to 50 million):
 
 * Every even number > 68 is the sum of two primes neither of which is 1 mod 10.
-  (`python primes.py verify 50000000 1,10`)
-
+  (`python primes.py verify 50000000 1,10`) (1/3/2020)
 * Every even number > 68 is the sum of two primes neither of which is 7 mod 10.
-  (`python primes.py verify 50000000 7,10`)
-
+  (`python primes.py verify 50000000 7,10`) (1/3/2020)
 * Every even number > 152 is the sum of two primes neither of which is 3 mod 10.
-  (`python primes.py verify 50000000 3,10`)
-
+  (`python primes.py verify 50000000 3,10`) (1/3/2020)
 * Every even number > 152 is the sum of two primes neither of which is 9 mod 10.
-  (`python primes.py verify 50000000 9,10`)
+  (`python primes.py verify 50000000 9,10`) (1/3/2020)
+
+* Every even number > 2 is the sum of two primes neither of which is 1 mod 8.
+  (python primes.py verify 50000000 1,8) (1/4/2020)
+  This implies that one can express every even number > 2 as the sum of two primes
+  using only 1/4 of all prime numbers.
+* Every even number > 56 is the sum of two primes neither of which is 3 mod 8.
+  (python primes.py verify 50000000 3,8) (1/4/2020)
+* Every even number > 188 is the sum of two primes neither of which is 5 mod 8.
+  (`python primes.py verify 50000000 5,8`) (1/4/2020)
+* Every even number > 188 is the sum of two primes neither of which is 7 mod 8.
+  (`python primes.py verify 50000000 7,8`) (1/4/2020)
+
+* Every even number > 2 is the sum of two primes neither of which is 1 mod 7 or 4 mod 7.
+  (`python primes.py verify 50000000 4,7,1,7`) (1/4/2020)
+  This implies that one can express every even number > 2 as the sum of two primes
+  using only 2/3 of all prime numbers.
