@@ -2,7 +2,7 @@
 
 A script for analyzing [Goldbach partitions](https://en.wikipedia.org/wiki/Goldbach's_conjecture).
 
-Currently testing the following observation/conjecture and its implications:
+Currently testing the following observation/conjecture (December 31, 2019) and its implications:
 
 For every prime P, there exists a threshold N such that every even number > N is the sum of two primes > P.
 
@@ -38,3 +38,17 @@ This means that every even number > 8 is the sum of two primes > 3.
 (See, for example, `python primes.py modstats 100000 6`)
 
 </ol>
+
+Further observations (January 3, 2020) (verified for all evens up to 50 million):
+
+* Every even number > 68 is the sum of two primes neither of which is 1 mod 10.
+  (`python primes.py verify 50000000 1,10`)
+
+* Every even number > 68 is the sum of two primes neither of which is 7 mod 10.
+  (`python primes.py verify 50000000 7,10`)
+
+* Every even number > 152 is the sum of two primes neither of which is 3 mod 10.
+  (`python primes.py verify 50000000 3,10`)
+
+* Every even number > 152 is the sum of two primes neither of which is 9 mod 10.
+  (`python primes.py verify 50000000 9,10`)
