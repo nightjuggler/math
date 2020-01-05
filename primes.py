@@ -498,27 +498,41 @@ def goldbach_mod_stats(num_evens=10000, mod=4, start_prime_index=1, version=3,
 	t2 = time.clock()
 	print "Time: {:.6f}s".format(t2 - t1)
 
-	count = [0] * (1 << shift)
 	cases = {}
-	for i, n in enumerate(evens):
-		count[n] += 1
-		even = (i + 3) << 1
-		s = cases.get(n)
+
+	def cases_str(bits, n):
+		s = [str(x) for x in cases[bits]]
+		if n > 5:
+			s.insert(-1, "...")
+		return "[{}]".format(", ".join(s))
+
+	def cases_add(bits, even):
+		even = (even + 3) << 1
+		s = cases.get(bits)
 		if s is None:
-			cases[n] = [even]
+			cases[bits] = [even]
 		elif len(s) < 5:
 			s.append(even)
 		else:
 			s[-1] = even
 
-	for i, n in enumerate(count):
-		if n > 0:
-			s = [str(x) for x in cases[i]]
-			if n > 5:
-				s.insert(-1, "...")
-			s = "[{}]".format(", ".join(s))
+	if shift > 16:
+		count = {}
+		for even, bits in enumerate(evens):
+			count[bits] = count.get(bits, 0) + 1
+			cases_add(bits, even)
 
-			print decode_bits(i), n, percent(n, num_evens), s
+		for bits, n in sorted(count.iteritems()):
+			print decode_bits(bits), n, percent(n, num_evens), cases_str(bits, n)
+	else:
+		count = [0] * (1 << shift)
+		for even, bits in enumerate(evens):
+			count[bits] += 1
+			cases_add(bits, even)
+
+		for bits, n in enumerate(count):
+			if n > 0:
+				print decode_bits(bits), n, percent(n, num_evens), cases_str(bits, n)
 
 def residue_distribution(max_number=10000, mod=4, residue_filter=()):
 
