@@ -52,7 +52,7 @@ Further observations (verified for all evens up to 50 million):
 
 * Every even number > 2 is the sum of two primes neither of which is 1 mod 8.
   (`python primes.py verify 50000000 1,8`) (1/4/2020)
-  This implies that one can express every even number > 2 as the sum of two primes
+  This implies that every even number > 2 can be expressed as the sum of two primes
   using only 3/4 of all primes.
 * Every even number > 56 is the sum of two primes neither of which is 3 mod 8.
   (`python primes.py verify 50000000 3,8`) (1/4/2020)
@@ -63,7 +63,7 @@ Further observations (verified for all evens up to 50 million):
 
 * Every even number > 2 is the sum of two primes neither of which is 1 mod 7 or 4 mod 7.
   (`python primes.py verify 50000000 4,7,1,7`) (1/4/2020)
-  This implies that one can express every even number > 2 as the sum of two primes
+  This implies that every even number > 2 can be expressed as the sum of two primes
   using only 2/3 of all primes.
 
 * Every even number > 2 is the sum of two primes neither of which is 1, 4, 6, 8, 9, 10, or 15 mod 17.

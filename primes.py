@@ -191,13 +191,16 @@ def goldbach_verify(max_number=10000, residue_filter=()):
 	print "Done!"
 	print "Time: {:.6f}s".format(t2 - t1)
 
-def goldbach_max_evens(max_number=10000, n_p_threshold=2.5, residue_filter=()):
+def goldbach_max_evens(max_number=10000, n_p_threshold=2.5, max_p_ratio=2.5, residue_filter=()):
 
 	if not (isinstance(max_number, int) and max_number >= 4):
 		print "The max_number parameter must be an integer >= 4!"
 		return
 	if not (isinstance(n_p_threshold, (float, int)) and n_p_threshold >= 2):
 		print "The n_p_threshold parameter must be a number >= 2!"
+		return
+	if not (isinstance(max_p_ratio, (float, int)) and max_p_ratio >= 1):
+		print "The max_p_ratio parameter must be a number >= 1!"
 		return
 	if not check_residue_filter(residue_filter):
 		return
@@ -250,12 +253,12 @@ def goldbach_max_evens(max_number=10000, n_p_threshold=2.5, residue_filter=()):
 
 	sum_n_p = 0.0
 	num_n_p = 0
-
 	previous_n = 0
 	num_less_than_previous_n = 0
+	max_p = int(max_number / max_p_ratio)
 
 	for p, n in itertools.izip(primes, max_evens):
-		if p * 4 >= max_number:
+		if p > max_p:
 			break
 
 		if n < previous_n:
@@ -268,7 +271,6 @@ def goldbach_max_evens(max_number=10000, n_p_threshold=2.5, residue_filter=()):
 
 		sum_n_p += n_p
 		num_n_p += 1
-
 		previous_n = n
 
 	if num_n_p == 0:
@@ -557,7 +559,7 @@ def residue_distribution(max_number=10000, mod=4, residue_filter=()):
 if __name__ == "__main__":
 	import main
 	main.run_command(sys.argv[1:], "partitions", {
-		"maxevens": (goldbach_max_evens, [10000, 2.5, ()]),
+		"maxevens": (goldbach_max_evens, [10000, 2.5, 2.5, ()]),
 		"modcount": (residue_distribution, [10000, 4, ()]),
 		"modstats": (goldbach_mod_stats, [10000, 4, 1, 3, (), ()]),
 		"partitions": (print_goldbach_partitions, [14]),
