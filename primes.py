@@ -1,3 +1,5 @@
+import itertools
+import math
 import sys
 import time
 
@@ -5,17 +7,24 @@ def init(max_number):
 	global primes
 	global is_prime
 
-	primes = []
-	is_prime_len = max_number + 1
-	is_prime = [True] * is_prime_len
+	print "Generating primes up to", max_number, "..."
+	t1 = time.clock()
+
+	is_prime = [True] * (max_number + 1)
 	is_prime[0] = False
 	is_prime[1] = False
 
-	for n in xrange(2, is_prime_len):
+	for n in xrange(2, int(math.sqrt(max_number)) + 1):
 		if is_prime[n]:
-			primes.append(n)
-			for m in xrange(n + n, is_prime_len, n):
-				is_prime[m] = False
+			m = n * n
+			is_prime[m::n] = [False] * len(is_prime[m::n])
+
+	primes = list(itertools.compress(itertools.count(), is_prime))
+
+	t2 = time.clock()
+
+	print "Time:", t2 - t1
+	print "Number of primes:", len(primes)
 
 def check_residue_filter(residue_filter):
 	if not (isinstance(residue_filter, (list, tuple)) and len(residue_filter) % 2 == 0):
