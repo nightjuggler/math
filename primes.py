@@ -57,11 +57,6 @@ def filter_primes(residue_filter):
 
 		print "Deleted {} primes ({} - {})".format(num_before - num_after, num_before, num_after)
 
-def is_sum_of_two_primes(N):
-	# 1. From Goldbach's conjecture, we know every even number (> 2) is the sum of two primes.
-	# 2. An odd number N is the sum of two primes if and only if N-2 is prime.
-	return N > 2 and (N % 2 == 0 or is_prime[N - 2])
-
 def goldbach_partitions(N):
 	if N < 4:
 		return []
