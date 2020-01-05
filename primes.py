@@ -254,7 +254,7 @@ def goldbach_max_evens(max_number=10000, n_p_threshold=2.5, residue_filter=()):
 	previous_n = 0
 	num_less_than_previous_n = 0
 
-	for p, n in zip(primes, max_evens):
+	for p, n in itertools.izip(primes, max_evens):
 		if p * 4 >= max_number:
 			break
 
@@ -276,7 +276,7 @@ def goldbach_max_evens(max_number=10000, n_p_threshold=2.5, residue_filter=()):
 		return
 
 	i = num_n_p - 1
-	print "Stopped at prime[{}] = {} (N = {}, N/P = {})".format(num_n_p, primes[i], max_evens[i], n_p)
+	print "Stopped at prime[{}] = {} (N = {}, N/P = {})".format(i, primes[i], max_evens[i], n_p)
 	print "Average N/P:", sum_n_p / num_n_p
 	print "Number of N less than previous N:", num_less_than_previous_n
 
@@ -301,11 +301,13 @@ def compute_mod_stats1(num_evens, mod):
 
 	print_mod_count(count)
 
-	for i, (p1, m1) in enumerate(zip(primes, prime_mods)):
+	from itertools import izip, count as icount
+
+	for i, p1, m1 in izip(icount(), primes, prime_mods):
 		if i & 127 == 0:
 			print "\rComputing sums p1 + p2 where p1 =", p1, "and p2 >= p1 ...",
 			sys.stdout.flush()
-		for j, (p2, m2) in enumerate(zip(primes[i:], prime_mods[i:])):
+		for j, p2, m2 in izip(icount(), primes[i:], prime_mods[i:]):
 			k = ((p1 + p2) >> 1) - 3
 			if k >= num_evens:
 				if j == 0:
