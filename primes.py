@@ -1,5 +1,4 @@
 import itertools
-import math
 import sys
 import time
 
@@ -14,7 +13,7 @@ def init(max_number):
 	is_prime[0] = False
 	is_prime[1] = False
 
-	for n in xrange(2, int(math.sqrt(max_number)) + 1):
+	for n in xrange(2, int(max_number ** 0.5) + 1):
 		if is_prime[n]:
 			m = n * n
 			is_prime[m::n] = [False] * len(is_prime[m::n])
@@ -22,8 +21,7 @@ def init(max_number):
 	primes = list(itertools.compress(itertools.count(), is_prime))
 
 	t2 = time.clock()
-
-	print "Time:", t2 - t1
+	print "Time: {:.6f}s".format(t2 - t1)
 	print "Number of primes:", len(primes)
 
 def check_residue_filter(residue_filter):
@@ -172,13 +170,12 @@ def goldbach_verify(max_number=10000, residue_filter=()):
 		prime_index += 1
 
 	print "Checking for a Goldbach partition for every even number from", n, "down to 4 ..."
+	t1 = time.clock()
 
 	while n > 2:
 		while primes[prime_index] > half_n:
 			if prime_index == 0:
-				print n, "(and lower) is not the sum of two primes!"
-				print "Done!"
-				return
+				break
 			prime_index -= 1
 		i = prime_index
 		while i >= 0:
@@ -190,7 +187,9 @@ def goldbach_verify(max_number=10000, residue_filter=()):
 		n -= 2
 		half_n -= 1
 
+	t2 = time.clock()
 	print "Done!"
+	print "Time: {:.6f}s".format(t2 - t1)
 
 def goldbach_max_evens(max_number=10000, n_p_threshold=2.5, residue_filter=()):
 
@@ -224,13 +223,14 @@ def goldbach_max_evens(max_number=10000, n_p_threshold=2.5, residue_filter=()):
 		prime_index += 1
 
 	print "Computing max evens for {} primes (up to {}) ...".format(prime_index + 1, primes[prime_index])
+	t1 = time.clock()
+
 	max_evens = [0] * (prime_index + 1)
 
 	while n > 2:
 		while primes[prime_index] > half_n:
 			if prime_index == 0:
-				print n, "(and lower) is not the sum of two primes!"
-				return
+				break
 			prime_index -= 1
 		i = prime_index
 		while i >= 0:
@@ -244,6 +244,8 @@ def goldbach_max_evens(max_number=10000, n_p_threshold=2.5, residue_filter=()):
 		n -= 2
 		half_n -= 1
 
+	t2 = time.clock()
+	print "Time: {:.6f}s".format(t2 - t1)
 	print "Averaging N/P ..."
 
 	sum_n_p = 0.0
@@ -492,7 +494,7 @@ def goldbach_mod_stats(num_evens=10000, mod=4, start_prime_index=1, version=3,
 	t1 = time.clock()
 	evens = compute_mod_stats(num_evens, mod)
 	t2 = time.clock()
-	print "Time:", t2 - t1
+	print "Time: {:.6f}s".format(t2 - t1)
 
 	count = [0] * (1 << shift)
 	cases = {}
