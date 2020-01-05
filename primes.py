@@ -512,10 +512,31 @@ def goldbach_mod_stats(num_evens=10000, mod=4, start_prime_index=1, version=3,
 
 			print decode_bits(i), n, percent(n, num_evens), s
 
+def residue_distribution(max_number=10000, mod=4, residue_filter=()):
+
+	if not (isinstance(max_number, int) and max_number >= 4):
+		print "The max_number parameter must be an integer >= 4!"
+		return
+	if not (isinstance(mod, int) and mod > 2):
+		print "The mod parameter must be an integer > 2!"
+		return
+	if not check_residue_filter(residue_filter):
+		return
+
+	init(max_number)
+	filter_primes(residue_filter)
+
+	count = [0] * mod
+	for p in primes:
+		count[p % mod] += 1
+
+	print_mod_count(count)
+
 if __name__ == "__main__":
 	import main
 	main.run_command(sys.argv[1:], "partitions", {
 		"maxevens": (goldbach_max_evens, [10000, 2.5, ()]),
+		"modcount": (residue_distribution, [10000, 4, ()]),
 		"modstats": (goldbach_mod_stats, [10000, 4, 1, 3, (), ()]),
 		"partitions": (print_goldbach_partitions, [14]),
 		"sliding": (goldbach_sliding_window, [10000]),
