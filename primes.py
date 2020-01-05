@@ -88,6 +88,7 @@ def print_goldbach_partitions(N=14):
 	print goldbach_partitions(N)
 
 def goldbach_sliding_window(max_number=10000):
+
 	if not (isinstance(max_number, int) and max_number > 40):
 		print "The max_number parameter must be an integer > 40!"
 		return
@@ -96,52 +97,43 @@ def goldbach_sliding_window(max_number=10000):
 	del primes[0]
 	num_primes = len(primes)
 
+	t1 = time.clock()
+
 	even = 4
 	qi = 0
 	qj = 10
 
 	while True:
 		q = primes[qi:qj]
-
-		print qi, qj-qi, q[0], q[-1], even
+		print qi, qj - qi, q[0], q[-1], even
 
 		if q[0] * 2 > even + 2:
 			break
 
 		j = len(q) - 1
-		while j != 0 and q[j] << 1 > even:
+		while j != 0 and q[j] * 2 > even:
 			j -= 1
 
-		sums = []
-		for i, p1 in enumerate(q):
-			for p2 in q[i if i > j else j:]:
-				n = p1 + p2
-				if n > even:
-					sums.append(n)
+		sums = {p1 + p2
+			for i, p1 in enumerate(q)
+				for p2 in q[i if i > j else j:] if p1 + p2 > even}
 
-		for m in sorted(sums):
-			if m == even + 2:
-				even = m
-			elif m != even:
-				break
+		while even + 2 in sums:
+			even += 2
 
 		if qj == num_primes:
 			break
 
 		qi += 1
 		n = primes[qi] * 2
-
 		while primes[qj] < n:
 			qj += 1
 			if qj == num_primes:
 				break
 
-		if qj - qi < 10:
-			qj = qi + 10
-			if qj > num_primes:
-				break
-
+	t2 = time.clock()
 	print "Done!", even
+	print "Time: {:.6f}s".format(t2 - t1)
 
 def goldbach_verify(max_number=10000, residue_filter=()):
 
