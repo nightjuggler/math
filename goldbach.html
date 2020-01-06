@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Goldbach's Conjecture</title>
+<style>
+body {
+	background-color: white;
+	font-family: verdana;
+	font-size: 10pt;
+}
+table {
+	border-collapse: collapse;
+	border: 1px solid black;
+}
+td {
+	width: 8px;
+	height: 8px;
+	border: 1px solid #dddddd;
+}
+a {text-decoration: none;}
+</style>
+<script>
+// Global Constants
+var firstNumber = 6;
+var gridHeight = 50;
+var gridWidth = 60;
+var nbsp = String.fromCharCode(160);
+
+// Global Variables
+var tableNode;
+var messageText;
+var maxNumber;
+var numToFill;
+var primeArray;
+var primeIndex;
+var sumCount;
+var maxSumCount;
+
+function fillGrid()
+{
+	var p = primeArray[primeIndex];
+	var diff = primeIndex > 0 ? (p - primeArray[primeIndex - 1]) >> 1 : 0;
+
+	var numPrimes = primeArray.length;
+	var numNewFilled = 0;
+
+	for (var i = primeIndex; i < numPrimes; ++i)
+	{
+		var n = p + primeArray[i];
+		if (n > maxNumber) break;
+		var evenNumber = n;
+		n = (n - firstNumber) >> 1;
+
+		var row = Math.floor(n / gridWidth);
+		var col = n % gridWidth;
+
+		var numSums = ++sumCount[n];
+		if (numSums === 1)
+			++numNewFilled;
+		if (numSums > maxSumCount)
+			maxSumCount = numSums;
+
+		var node = tableNode.children[row].children[col];
+		node.title = evenNumber + ' (' + numSums + ')';
+
+		var hue = Math.floor(numSums * 1.4);
+		node.style.backgroundColor = 'hsl(' + hue + ',100%,50%)';
+	}
+
+	messageText.nodeValue = 'p[' + primeIndex + '] = ' + p + ', maxSumCount = ' + maxSumCount;
+
+	numToFill -= numNewFilled;
+	if (i > primeIndex++)
+		setTimeout(fillGrid, 100);
+}
+function initFillGrid()
+{
+	numToFill = gridWidth * gridHeight;
+	sumCount = new Array(numToFill);
+
+	for (var i = 0; i < numToFill; ++i)
+		sumCount[i] = 0;
+
+	primeIndex = 0;
+	maxSumCount = 0;
+	setTimeout(fillGrid, 100);
+}
+function findPrimes()
+{
+	maxNumber = firstNumber - 2 + 2 * gridWidth * gridHeight;
+
+	var arrayLen = maxNumber + 1;
+	var isPrime = new Array(arrayLen);
+
+	isPrime[0] = false;
+	isPrime[1] = false;
+
+	for (var n = 2; n < arrayLen; ++n)
+		isPrime[n] = true;
+
+	primeArray = [];
+	for (var n = 2; n < arrayLen; ++n)
+		if (isPrime[n])
+		{
+			primeArray.push(n);
+
+			// eliminate multiples of this prime
+			for (var i = n + n; i < arrayLen; i += n)
+				isPrime[i] = false;
+		}
+	primeArray.shift(); // remove 2
+}
+function init()
+{
+	messageText = document.createTextNode(nbsp);
+	document.getElementById('messageDiv').appendChild(messageText);
+
+	tableNode = document.createElement('table');
+	var evenNumber = firstNumber;
+
+	for (var i = 0; i < gridHeight; ++i)
+	{
+		var trNode = document.createElement('tr');
+		for (var j = 0; j < gridWidth; ++j)
+		{
+			var tdNode = document.createElement('td');
+			tdNode.id = 'td' + evenNumber;
+			tdNode.title = evenNumber;
+			evenNumber += 2;
+			trNode.appendChild(tdNode);
+		}
+		tableNode.appendChild(trNode);
+	}
+
+	document.getElementById('gridContainer').appendChild(tableNode);
+
+	findPrimes();
+	initFillGrid();
+}
+</script>
+</head>
+<body onload="init()">
+
+<a href="https://en.wikipedia.org/wiki/Goldbach%27s_conjecture">Goldbach's conjecture</a>,
+<span id="messageDiv"></span>
+<div id="gridContainer"></div>
+
+</body>
+</html>
