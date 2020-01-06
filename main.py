@@ -22,7 +22,15 @@ def run_command(args, default_command, commands):
 
 	for i, (arg, param) in enumerate(zip(args, params)):
 
-		if isinstance(param, int):
+		if isinstance(param, bool):
+			if arg in ("1", "on", "true", "yes"):
+				param = True
+			elif arg in ("0", "off", "false", "no"):
+				param = False
+			else:
+				print "The", ordinal(i+1), "parameter after the command must be a boolean!"
+				return
+		elif isinstance(param, int):
 			param = parse_number(arg)
 			if param is None:
 				print "The", ordinal(i+1), "parameter after the command must be an integer!"

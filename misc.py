@@ -15,7 +15,7 @@ def square_partitions(N):
 
 	print partitions
 
-def evens_from_odds(max_even, first_odd=3):
+def evens_from_odds(max_even, first_odd=3, csv=False):
 
 	if not isinstance(max_even, int):
 		print "The max_even parameter must be an integer!"
@@ -23,6 +23,9 @@ def evens_from_odds(max_even, first_odd=3):
 	if not (isinstance(first_odd, int) and first_odd % 2 != 0):
 		print "The first_odd parameter must be an odd integer!"
 		return
+
+	if csv:
+		print "numOdds,maxEven"
 
 	odds = [first_odd]
 	first_even = first_odd * 2
@@ -60,6 +63,11 @@ def evens_from_odds(max_even, first_odd=3):
 
 		odds[-1] = best_x
 		next_even = best_x_even
+		if csv:
+			print str(len(odds)) + "," + str(next_even - 2)
+
+	if csv:
+		return
 
 	oddsstr = "{" + ", ".join(map(str, odds)) + "}"
 	percent = "{:.2f}%".format(100.0 * len(odds) / ((next_even - 1 - first_odd) / 2))
@@ -181,7 +189,7 @@ if __name__ == "__main__":
 	import main
 	main.run_command(sys.argv[1:], "square_partitions", {
 		"consecutive_evens": (consecutive_evens, [[3, 5, 9, 13, 15, 29, 33, 35, 47, 51], 6]),
-		"evens_from_odds": (evens_from_odds, [100, 3]),
+		"evens_from_odds": (evens_from_odds, [100, 3, False]),
 		"naive_sieve": (naive_sieve, [10000]),
 		"read_primes": (read_primes, [1]),
 		"sieve": (sieve, [10000]),
