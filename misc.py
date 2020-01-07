@@ -3,6 +3,30 @@ import os.path
 import sys
 import time
 
+def print_mod_count(numbers, mod):
+
+	if not isinstance(numbers, (list, tuple)):
+		print "The numbers parameter must be a list of integers!"
+		return
+	for n in numbers:
+		if not isinstance(n, int):
+			print "The numbers parameter must be a list of integers!"
+			return
+	if not (isinstance(mod, int) and mod > 1):
+		print "The mod parameter must be an integer > 1!"
+		return
+
+	count = [0] * mod
+	for n in numbers:
+		count[n % mod] += 1
+
+	num_len = len(numbers)
+	mod_str = "mod {}:".format(mod)
+
+	for i, n in enumerate(count):
+		if n > 0:
+			print i, mod_str, n, "({:.2f}%)".format(100.0 * n / num_len)
+
 def square_partitions(N):
 	partitions = []
 	for a in xrange(int(N ** 0.5) + 1):
@@ -34,6 +58,7 @@ def evens_from_odds(max_even, first_odd=3, csv=0):
 		print "var evensFromOddsData = ["
 		csv_format = lambda n, e: "{numOdds:" + str(n) + ",maxEven:" + str(e) + "},"
 
+	t1 = time.clock()
 	odds = [first_odd]
 	first_even = first_odd * 2
 	next_even = first_even + 2
@@ -47,13 +72,14 @@ def evens_from_odds(max_even, first_odd=3, csv=0):
 		best_x_even = 0
 
 		while True:
-			j = len(odds) - 1
-			while j != 0 and odds[j] * 2 >= next_even:
-				j -= 1
-
-			sums = {n1 + n2
-				for i, n1 in enumerate(odds)
-					for n2 in odds[i if i > j else j:] if n1 + n2 >= next_even}
+			sums = set()
+			for i, n1 in enumerate(odds[::-1], start=1):
+				for n2 in odds[-i::-1]:
+					if n1 + n2 < next_even:
+						break
+					sums.add(n1 + n2)
+				if n1 == n2:
+					break
 
 			x_even = next_even
 			while x_even in sums:
@@ -73,10 +99,11 @@ def evens_from_odds(max_even, first_odd=3, csv=0):
 		if csv:
 			print csv_format(len(odds), next_even - 2)
 
+	t2 = time.clock()
 	if csv:
 		if csv == 2:
 			print "];"
-		return
+		return odds
 
 	oddsstr = "{" + ", ".join(map(str, odds)) + "}"
 	percent = "{:.2f}%".format(100.0 * len(odds) / ((next_even - 1 - first_odd) / 2))
@@ -85,6 +112,9 @@ def evens_from_odds(max_even, first_odd=3, csv=0):
 	print "can be expressed as sums of two odds from the set", oddsstr,
 	print "which has", len(odds), "elements =", percent, "of the odd numbers",
 	print "from", first_odd, "to", next_even - 3
+	print "Time: {:.6f}s".format(t2 - t1)
+
+	return odds
 
 def consecutive_evens(numbers, start=6):
 
@@ -199,6 +229,7 @@ if __name__ == "__main__":
 	main.run_command(sys.argv[1:], "square_partitions", {
 		"consecutive_evens": (consecutive_evens, [[3, 5, 9, 13, 15, 29, 33, 35, 47, 51], 6]),
 		"evens_from_odds": (evens_from_odds, [100, 3, 0]),
+		"modcount": (print_mod_count, [[], 4]),
 		"naive_sieve": (naive_sieve, [10000]),
 		"read_primes": (read_primes, [1]),
 		"sieve": (sieve, [10000]),
