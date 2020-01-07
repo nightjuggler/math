@@ -69,3 +69,19 @@ Further observations (verified for all evens up to 50 million):
 * Every even number > 2 is the sum of two primes neither of which is 1, 4, 6, 8, 9, 10, or 15 mod 17.
   (`python primes.py verify 50000000 1,17,4,17,6,17,8,17,9,17,10,17,15,17`) (1/4/2020)
   This omits (3001134 - 1688268) / 3001134 = 43.75% of primes.
+
+## goldbach.html
+
+Visualization of patterns in the number of [Goldbach partitions](https://en.wikipedia.org/wiki/Goldbach%27s_comet)
+for each even number from 6 to 6004.
+
+See [https://nightjuggler.com/math/goldbach.html](https://nightjuggler.com/math/goldbach.html)
+
+## evens_from_odds.html
+
+Visualization of the minimum number of odds > 1 (Y axis) (as calculated by the
+`evens_from_odds` function in `misc.py`) needed to express every even number > 4
+up to a threshold (X axis) as the sum of two odds.
+
+See [https://nightjuggler.com/math/evens_from_odds.html](https://nightjuggler.com/math/evens_from_odds.html)
+
