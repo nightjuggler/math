@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Evens from Odds</title>
+<script src="https://d3js.org/d3.v5.min.js"></script>
+<script src="evens_from_odds.js"></script>
+<style>
+body {
+	background-color: white;
+	font-family: verdana;
+	font-size: 10pt;
+}
+.axis {
+	font-family: verdana;
+	font-size: 10pt;
+	stroke: black;
+	stroke-width: 1;
+}
+.line {
+	fill: none;
+	stroke: magenta;
+	stroke-width: 2;
+}
+.line1 {
+	stroke: blue;
+}
+.line2 {
+	stroke: red;
+}
+.line3 {
+	stroke: green;
+}
+</style>
+<script>
+/* globals d3, window */
+/* globals evensFromOddsData */
+
+function plotData(data, xAttr, yAttr, width, height, margin, options)
+{
+	"use strict";
+	var getX = d => d[xAttr];
+	var getY = d => d[yAttr];
+
+	var xScale = d3.scaleLinear([0, d3.max(data, getX)], [0, width]);
+	var yScale = d3.scaleLinear([0, d3.max(data, getY)], [height, 0]);
+
+	var getXScaled = d => xScale(d[xAttr]);
+	var getYScaled = d => yScale(d[yAttr]);
+
+	var xAxis = d3.axisBottom(xScale).ticks(5);
+	var yAxis = d3.axisLeft(yScale).ticks(5);
+
+	var svg = d3.select("body")
+		.append("svg")
+			.attr("width", width + margin.left + margin.right)
+			.attr("height", height + margin.top + margin.bottom)
+		.append("g")
+			.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+	if (!options)
+		options = {};
+	if (options.line === undefined && options.points === undefined)
+		options.line = [["", null]];
+	if (options.line)
+		for (let [className, yFunc] of options.line) {
+			let line = d3.line().x(getXScaled);
+			if (yFunc === null)
+				line.y(getYScaled);
+			else
+				line.y(d => yScale(yFunc(d[xAttr])));
+			svg.append("path")
+				.attr("class", className ? "line " + className : "line")
+				.attr("d", line(data));
+		}
+
+	if (options.points)
+		svg.selectAll("circle")
+			.data(data)
+			.join("circle") // .enter().append("circle")
+			.attr("cx", getXScaled)
+			.attr("cy", getYScaled)
+			.attr("r", 2);
+
+	svg.append("g")
+		.attr("class", "axis")
+		.attr("transform", "translate(0," + height + ")")
+		.call(xAxis);
+	svg.append("g")
+		.attr("class", "axis")
+		.call(yAxis);
+}
+function plotEvensFromOdds()
+{
+	"use strict";
+	var threshold = 80000;
+	var data = evensFromOddsData;
+	var i = data.findIndex((d, i) => i > 0 && d.maxEven > threshold && data[i - 1].maxEven >= threshold);
+	if (i >= 0)
+		data.splice(i);
+
+	plotData(data, "maxEven", "numOdds", 800, 600,
+		{top: 40, left: 40, bottom: 40, right: 40},
+		{
+			line: [
+				["line1", x => 90 + 0.01 * x],
+				["line2", x => 50 * Math.log2((x + 1000) / 1000)],
+				["line3", x => 2 * Math.sqrt(x) + x / 1200],
+			],
+			points: true,
+		});
+}
+window.addEventListener("DOMContentLoaded", plotEvensFromOdds, false);
+</script>
+</head>
+<body>
+</body>
+</html>
