@@ -11,6 +11,12 @@ body {
 	font-family: verdana;
 	font-size: 10pt;
 }
+#graph {
+	text-align: center;
+}
+svg {
+	border: 1px solid black;
+}
 .axis {
 	font-family: verdana;
 	font-size: 10pt;
@@ -51,7 +57,7 @@ function plotData(data, xAttr, yAttr, width, height, margin, options)
 	var xAxis = d3.axisBottom(xScale).ticks(5);
 	var yAxis = d3.axisLeft(yScale).ticks(5);
 
-	var svg = d3.select("body")
+	var svg = d3.select("#graph")
 		.append("svg")
 			.attr("width", width + margin.left + margin.right)
 			.attr("height", height + margin.top + margin.bottom)
@@ -90,17 +96,56 @@ function plotData(data, xAttr, yAttr, width, height, margin, options)
 		.attr("class", "axis")
 		.call(yAxis);
 }
+function isValidId(s, n)
+{
+	return s.length <= n && s.match(/^[a-z][_0-9a-z]*$/) !== null;
+}
+function parseMaxEven(q, v)
+{
+	if (v.match(/^[1-9][0-9]*$/))
+		q.maxEven = parseInt(v, 10);
+}
+function parseQueryString(queryString)
+{
+	var q = window.location.search;
+
+	if (typeof q !== 'string' || q.charAt(0) !== '?') return;
+
+	var flags = {
+	};
+	var handlers = {
+		max: parseMaxEven,
+	};
+
+	for (var s of q.substr(1).split('&'))
+	{
+		var i = s.indexOf('=');
+		if (i < 0 && isValidId(s, 3) && flags[s]) {
+			queryString[flags[s]] = true;
+			continue;
+		}
+		if (i < 1 || i === s.length - 1) continue;
+		var k = s.substr(0, i);
+		var v = s.substr(i + 1);
+
+		if (isValidId(k, 3) && handlers[k])
+			handlers[k](queryString, v);
+	}
+}
 function plotEvensFromOdds()
 {
 	"use strict";
-	var threshold = 80000;
 	var data = evensFromOddsData;
-	var i = data.findIndex((d, i) => i > 0 && d.maxEven > threshold && data[i - 1].maxEven >= threshold);
+	var queryString = {};
+	parseQueryString(queryString);
+
+	var maxEven = queryString.maxEven;
+	var i = data.findIndex((d, i) => i > 0 && d.maxEven > maxEven && data[i - 1].maxEven >= maxEven);
 	if (i >= 0)
 		data.splice(i);
 
 	plotData(data, "maxEven", "numOdds", 800, 600,
-		{top: 40, left: 40, bottom: 40, right: 40},
+		{top: 40, left: 50, bottom: 40, right: 40},
 		{
 			line: [
 				["line1", x => 90 + 0.01 * x],
@@ -114,5 +159,7 @@ window.addEventListener("DOMContentLoaded", plotEvensFromOdds, false);
 </script>
 </head>
 <body>
+<div id="graph"><b>Minimum number of odds > 1 (Y axis) needed to express every even number > 4
+up to a threshold (X axis) as the sum of two odds.</b><br><br></div>
 </body>
 </html>
