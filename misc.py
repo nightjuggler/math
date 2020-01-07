@@ -178,7 +178,7 @@ def sieve(max_number):
 	for n in xrange(2, int(max_number ** 0.5) + 1):
 		if is_prime[n]:
 			m = n * n
-			is_prime[m::n] = [False] * len(is_prime[m::n])
+			is_prime[m::n] = [False] * ((max_number - m) / n + 1)
 
 	primes = list(itertools.compress(itertools.count(), is_prime))
 
