@@ -87,21 +87,39 @@ def print_goldbach_partitions(N=14):
 	init(N)
 	print goldbach_partitions(N)
 
-def goldbach_sliding_window(max_number=10000, verbose=False):
+def goldbach_sliding_window(max_number=10000, start_prime_index=1, start_even=6, verbose=False):
 
-	if not (isinstance(max_number, int) and max_number > 30):
-		print "The max_number parameter must be an integer > 30!"
+	if not (isinstance(max_number, int) and max_number > 4):
+		print "The max_number parameter must be an integer > 4!"
+		return
+	if not (isinstance(start_prime_index, int) and start_prime_index > 0):
+		print "The start_prime_index parameter must be an integer > 0!"
+		return
+	if not (isinstance(start_even, int) and start_even % 2 == 0 and start_even > 4):
+		print "The start_even parameter must be an even integer > 4!"
 		return
 
 	init(max_number)
-	del primes[0]
 	num_primes = len(primes)
 
-	t1 = time.clock()
+	if start_prime_index + 10 >= num_primes:
+		print "Not enough primes!"
+		return
 
-	even = 6
-	qi = 0
-	qj = 10
+	qi = start_prime_index
+	qj = qi + 10
+	if qi > 10:
+		n = primes[qi] * 2
+		while primes[qj] < n:
+			qj += 1
+			if qj == num_primes:
+				print "Not enough primes for a full window!"
+				return
+	even = start_even
+
+	print "Generating consecutive evens starting with", even,
+	print "using primes from", primes[qi], "to", primes[num_primes - 1], "..."
+	t1 = time.clock()
 
 	while True:
 		q = primes[qi:qj]
@@ -131,10 +149,12 @@ def goldbach_sliding_window(max_number=10000, verbose=False):
 		while primes[qj] < n:
 			qj += 1
 			if qj == num_primes:
+				print "Last full window started with prime[{}] = {}".format(qi - 1, primes[qi - 1]),
+				print "and generated evens up to", even - 2
 				break
 
 	t2 = time.clock()
-	print "Done!", even - 2
+	print "Done!", "Generated evens up to", even - 2
 	print "Time: {:.6f}s".format(t2 - t1)
 
 def goldbach_verify(max_number=10000, residue_filter=()):
@@ -557,6 +577,6 @@ if __name__ == "__main__":
 		"modcount": (residue_distribution, [10000, 4, ()]),
 		"modstats": (goldbach_mod_stats, [10000, 4, 1, 3, (), ()]),
 		"partitions": (print_goldbach_partitions, [14]),
-		"sliding": (goldbach_sliding_window, [10000, False]),
+		"sliding": (goldbach_sliding_window, [10000, 1, 6, False]),
 		"verify": (goldbach_verify, [10000, ()]),
 	})
