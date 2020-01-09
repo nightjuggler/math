@@ -150,11 +150,13 @@ def goldbach_sliding_window(max_number=10000, start_prime_index=1, start_even=6,
 			qj += 1
 			if qj == num_primes:
 				print "Last full window started with prime[{}] = {}".format(qi - 1, primes[qi - 1]),
-				print "and generated evens up to", even - 2
+				print "and generated",
+				print "no evens!" if even == start_even else "evens up to " + str(even - 2)
 				break
 
 	t2 = time.clock()
-	print "Done!", "Generated evens up to", even - 2
+	print "Done!", "Generated",
+	print "no evens!" if even == start_even else "evens up to " + str(even - 2)
 	print "Time: {:.6f}s".format(t2 - t1)
 
 def goldbach_verify(max_number=10000, residue_filter=()):
