@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Prime Gaps</title>
+<script src="https://d3js.org/d3.v5.min.js"></script>
+<style>
+body {
+	background-color: white;
+	font-family: verdana;
+	font-size: 10pt;
+}
+#graph {
+	text-align: center;
+}
+#outersvg {
+	border: 1px solid black;
+}
+circle {
+	cursor: pointer;
+	fill: red;
+	r: 2.5px;
+	stroke-width: 0;
+	transition: r ease 0.5s;
+}
+circle:hover {
+	fill: blue;
+	r: 6.5px;
+}
+.axis {
+	font-family: verdana;
+	font-size: 10pt;
+	shape-rendering: crispEdges;
+	stroke: black;
+	stroke-opacity: 0.3;
+	stroke-width: 1;
+}
+.line {
+	fill: none;
+	stroke: magenta;
+	stroke-width: 2;
+}
+</style>
+<script>
+/* globals d3, document, window */
+(function() {
+"use strict";
+function plotData(data, xAttr, yAttr, width, height, margin, options)
+{
+	const maxX = options.maxX || d3.max(data, d => d[xAttr]);
+	const maxY = options.maxY || d3.max(data, d => d[yAttr]);
+
+	const xScale = d3.scaleLinear([0, maxX], [0, width]);
+	const yScale = d3.scaleLinear([0, maxY], [height, 0]);
+
+	const getXScaled = d => xScale(d[xAttr]);
+	const getYScaled = d => yScale(d[yAttr]);
+
+	const xAxis = d3.axisBottom(xScale).tickSizeInner(height + 8).tickSizeOuter(height);
+	const yAxis = d3.axisLeft(yScale).tickSizeInner(width + 8).tickSizeOuter(width);
+
+	const svg = d3.select("#graph")
+		.append("svg")
+			.attr("id", "outersvg")
+			.attr("width", width + margin.left + margin.right)
+			.attr("height", height + margin.top + margin.bottom);
+
+	const gX = svg.append("g")
+		.attr("class", "axis")
+		.attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+		.call(xAxis);
+	const gY = svg.append("g")
+		.attr("class", "axis")
+		.attr("transform", "translate(" + (margin.left + width) + "," + margin.top + ")")
+		.call(yAxis);
+
+	if (!options)
+		options = {};
+	if (options.line === undefined && options.points === undefined)
+		options.line = [["", null]];
+	if (options.line)
+		for (let [className, yFunc] of options.line) {
+			let line = d3.line().x(getXScaled);
+			if (yFunc === null)
+				line.y(getYScaled);
+			else
+				line.y(d => yScale(yFunc(d[xAttr])));
+			svg.append("path")
+				.attr("class", className ? "line " + className : "line")
+				.attr("d", line(data));
+		}
+	if (options.points)
+	{
+		const circles = svg.append("svg")
+				.attr("id", "innersvg")
+				.attr("x", margin.left)
+				.attr("y", margin.top)
+				.attr("width", width)
+				.attr("height", height)
+				.attr("viewBox", [0, 0, width, height])
+			.selectAll("circle")
+				.data(data)
+				.join("circle") // .enter().append("circle")
+				.attr("cx", getXScaled)
+				.attr("cy", getYScaled);
+
+		const zoom = d3.zoom()
+			.extent([[0, 0], [width, height]])
+			.scaleExtent([1, 40])
+			.translateExtent([[0, 0], [width, height]])
+			.on("zoom", function() {
+				var txScale = d3.event.transform.rescaleX(xScale);
+				gX.call(xAxis.scale(txScale));
+				circles.attr("cx", d => txScale(d[xAttr]));
+			});
+		svg.call(zoom);
+	}
+}
+
+const gapInfo = ([prime, gap]) => "Prime = " + prime + ", Gap = " + gap;
+
+function addHandlers1(textNode, defaultValue)
+{
+	d3.selectAll("circle")
+		.on("mouseenter", function(d) {
+			textNode.nodeValue = gapInfo(d);
+		})
+		.on("mouseleave", function() {
+			textNode.nodeValue = defaultValue;
+		});
+}
+function addHandlers2(textNode, defaultValue)
+{
+	d3.selectAll("circle").each(function(d) {
+		this.addEventListener("mouseenter", function() {
+			textNode.nodeValue = gapInfo(d);
+		});
+		this.addEventListener("mouseleave", function() {
+			textNode.nodeValue = defaultValue;
+		});
+	});
+}
+function addHandlers3(textNode, defaultValue)
+{
+	const showData = function(event) {
+		textNode.nodeValue = gapInfo(event.currentTarget.__data__);
+	};
+	const hideData = function() {
+		textNode.nodeValue = defaultValue;
+	};
+	for (var node of document.getElementsByTagName("circle")) {
+		node.addEventListener("mouseenter", showData, true);
+		node.addEventListener("mouseleave", hideData, true);
+	}
+}
+function isValidId(s, n)
+{
+	return s.length <= n && s.match(/^[a-z][_0-9a-z]*$/) !== null;
+}
+function parseMaxNumber(q, v)
+{
+	if (v.match(/^[1-9][0-9]*$/))
+		q.maxNumber = parseInt(v, 10);
+}
+function parseQueryString(queryString)
+{
+	const q = window.location.search;
+
+	if (typeof q !== 'string' || q.charAt(0) !== '?') return;
+
+	const flags = {
+	};
+	const handlers = {
+		max: parseMaxNumber,
+	};
+
+	for (var s of q.substr(1).split('&'))
+	{
+		var i = s.indexOf('=');
+		if (i < 0 && isValidId(s, 3) && flags[s]) {
+			queryString[flags[s]] = true;
+			continue;
+		}
+		if (i < 1 || i === s.length - 1) continue;
+		var k = s.substr(0, i);
+		var v = s.substr(i + 1);
+
+		if (isValidId(k, 3) && handlers[k])
+			handlers[k](queryString, v);
+	}
+}
+function getPrimes(maxNumber)
+{
+	const arrayLen = maxNumber + 1;
+	const isPrime = new Uint8Array(arrayLen);
+	const sqrt = Math.floor(Math.sqrt(maxNumber));
+
+	for (var n = 3; n <= sqrt; n += 2)
+		if (isPrime[n] === 0)
+			for (var i = n * n, step = n * 2; i < arrayLen; i += step)
+				isPrime[i] = 1;
+
+	const primes = [2];
+	for (n = 3; n < arrayLen; n += 2)
+		if (isPrime[n] === 0)
+			primes.push(n);
+	return primes;
+}
+function main()
+{
+	const q = {maxNumber: 10000};
+	parseQueryString(q);
+
+	const gaps = [];
+	const primes = getPrimes(q.maxNumber);
+	const maxIndex = primes.length - 1;
+
+	for (var i = 0; i < maxIndex; i += 1)
+		gaps.push([primes[i], primes[i + 1] - primes[i]]);
+
+	plotData(gaps, 0, 1, 800, 600,
+		{top: 40, left: 50, bottom: 40, right: 40},
+		{
+			maxX: q.maxNumber,
+			points: true,
+		});
+
+	const textNode = document.getElementById("gapinfo").firstChild;
+	addHandlers3(textNode, textNode.nodeValue);
+}
+window.addEventListener("DOMContentLoaded", main, false);
+})();
+</script>
+</head>
+<body>
+<div id="graph">
+<div><b>Prime Gaps</b></div>
+<div id="gapinfo">(Select a point on the graph)</div>
+<br></div>
+</body>
+</html>
