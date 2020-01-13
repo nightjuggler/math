@@ -41,23 +41,23 @@ svg {
 <script>
 /* globals d3, window */
 /* globals evensFromOddsData */
-
+(function() {
+"use strict";
 function plotData(data, xAttr, yAttr, width, height, margin, options)
 {
-	"use strict";
-	var getX = d => d[xAttr];
-	var getY = d => d[yAttr];
+	const getX = d => d[xAttr];
+	const getY = d => d[yAttr];
 
-	var xScale = d3.scaleLinear([0, d3.max(data, getX)], [0, width]);
-	var yScale = d3.scaleLinear([0, d3.max(data, getY)], [height, 0]);
+	const xScale = d3.scaleLinear([0, d3.max(data, getX)], [0, width]);
+	const yScale = d3.scaleLinear([0, d3.max(data, getY)], [height, 0]);
 
-	var getXScaled = d => xScale(d[xAttr]);
-	var getYScaled = d => yScale(d[yAttr]);
+	const getXScaled = d => xScale(d[xAttr]);
+	const getYScaled = d => yScale(d[yAttr]);
 
-	var xAxis = d3.axisBottom(xScale).ticks(5);
-	var yAxis = d3.axisLeft(yScale).ticks(5);
+	const xAxis = d3.axisBottom(xScale).ticks(5);
+	const yAxis = d3.axisLeft(yScale).ticks(5);
 
-	var svg = d3.select("#graph")
+	const svg = d3.select("#graph")
 		.append("svg")
 			.attr("width", width + margin.left + margin.right)
 			.attr("height", height + margin.top + margin.bottom)
@@ -107,13 +107,13 @@ function parseMaxEven(q, v)
 }
 function parseQueryString(queryString)
 {
-	var q = window.location.search;
+	const q = window.location.search;
 
 	if (typeof q !== 'string' || q.charAt(0) !== '?') return;
 
-	var flags = {
+	const flags = {
 	};
-	var handlers = {
+	const handlers = {
 		max: parseMaxEven,
 	};
 
@@ -132,15 +132,14 @@ function parseQueryString(queryString)
 			handlers[k](queryString, v);
 	}
 }
-function plotEvensFromOdds()
+function main()
 {
-	"use strict";
-	var data = evensFromOddsData;
-	var queryString = {};
-	parseQueryString(queryString);
+	const q = {};
+	parseQueryString(q);
 
-	var maxEven = queryString.maxEven;
-	var i = data.findIndex((d, i) => i > 0 && d.maxEven > maxEven && data[i - 1].maxEven >= maxEven);
+	const data = evensFromOddsData;
+	const maxEven = q.maxEven;
+	const i = data.findIndex((d, i) => i > 0 && d.maxEven > maxEven && data[i - 1].maxEven >= maxEven);
 	if (i >= 0)
 		data.splice(i);
 
@@ -155,7 +154,8 @@ function plotEvensFromOdds()
 			points: true,
 		});
 }
-window.addEventListener("DOMContentLoaded", plotEvensFromOdds, false);
+window.addEventListener("DOMContentLoaded", main, false);
+})();
 </script>
 </head>
 <body>
