@@ -16,16 +16,16 @@ body {
 #outersvg {
 	border: 1px solid black;
 }
-circle {
+.gap {
 	cursor: pointer;
-	fill: red;
-	r: 2.5px;
-	stroke-width: 0;
-	transition: r ease 0.5s;
+	stroke: red;
+	stroke-linecap: round;
+	stroke-width: 5px;
+	transition: stroke-width ease 0.5s;
 }
-circle:hover {
-	fill: blue;
-	r: 6.5px;
+.gap:hover {
+	stroke: blue;
+	stroke-width: 13px;
 }
 .axis {
 	font-family: verdana;
@@ -91,27 +91,31 @@ function plotData(data, xAttr, yAttr, width, height, margin, options)
 		}
 	if (options.points)
 	{
-		const circles = svg.append("svg")
+		const gaps = svg.append("svg")
 				.attr("id", "innersvg")
 				.attr("x", margin.left)
 				.attr("y", margin.top)
 				.attr("width", width)
 				.attr("height", height)
 				.attr("viewBox", [0, 0, width, height])
-			.selectAll("circle")
+			.selectAll(".gap")
 				.data(data)
-				.join("circle") // .enter().append("circle")
-				.attr("cx", getXScaled)
-				.attr("cy", getYScaled);
+				.join("line")
+				.attr("class", "gap")
+				.attr("x1", getXScaled)
+				.attr("y1", getYScaled)
+				.attr("x2", d => xScale(d[xAttr] + d[yAttr]))
+				.attr("y2", getYScaled);
 
 		const zoom = d3.zoom()
 			.extent([[0, 0], [width, height]])
-			.scaleExtent([1, 40])
+			.scaleExtent([1, 100])
 			.translateExtent([[0, 0], [width, height]])
 			.on("zoom", function() {
-				var txScale = d3.event.transform.rescaleX(xScale);
+				const txScale = d3.event.transform.rescaleX(xScale);
 				gX.call(xAxis.scale(txScale));
-				circles.attr("cx", d => txScale(d[xAttr]));
+				gaps.attr("x1", d => txScale(d[xAttr]))
+					.attr("x2", d => txScale(d[xAttr] + d[yAttr]));
 			});
 		svg.call(zoom);
 	}
@@ -121,7 +125,7 @@ const gapInfo = ([prime, gap]) => "Prime = " + prime + ", Gap = " + gap;
 
 function addHandlers1(textNode, defaultValue)
 {
-	d3.selectAll("circle")
+	d3.selectAll(".gap")
 		.on("mouseenter", function(d) {
 			textNode.nodeValue = gapInfo(d);
 		})
@@ -131,7 +135,7 @@ function addHandlers1(textNode, defaultValue)
 }
 function addHandlers2(textNode, defaultValue)
 {
-	d3.selectAll("circle").each(function(d) {
+	d3.selectAll(".gap").each(function(d) {
 		this.addEventListener("mouseenter", function() {
 			textNode.nodeValue = gapInfo(d);
 		});
@@ -148,7 +152,7 @@ function addHandlers3(textNode, defaultValue)
 	const hideData = function() {
 		textNode.nodeValue = defaultValue;
 	};
-	for (var node of document.getElementsByTagName("circle")) {
+	for (var node of document.getElementsByClassName("gap")) {
 		node.addEventListener("mouseenter", showData, true);
 		node.addEventListener("mouseleave", hideData, true);
 	}
