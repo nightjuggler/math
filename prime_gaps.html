@@ -44,18 +44,20 @@ body {
 /* globals d3, document, window */
 (function() {
 "use strict";
-/*
-const hue = n => (n % 4) * (360 / 4);
-const gapColor = n => "hsl(" + hue(n) + ",100%,50%)";
-*/
-const gapColors = ["magenta", "red", "green", "blue"];
-const gapColor = n => gapColors[n % 4];
-const gapInfo = ([prime, gap]) => "Prime = " + prime + ", Gap = " + gap;
-
+function colorFactory(modulus)
+{
+	if (modulus > 0) {
+		const hue = n => n % modulus * 360 / modulus;
+		return ([n]) => "hsl(" + hue(n) + ",100%,50%)";
+	}
+	const colors = ["magenta", "red", "green", "blue"];
+	modulus = colors.length;
+	return ([n]) => colors[n % modulus];
+}
 function plotData(data, xAttr, yAttr, width, height, margin, options)
 {
-	const maxX = options.maxX || d3.max(data, d => d[xAttr]);
-	const maxY = options.maxY || d3.max(data, d => d[yAttr]);
+	const maxX = options.maxX || d3.max(data, d => d[xAttr]) + 1;
+	const maxY = options.maxY || d3.max(data, d => d[yAttr]) + 1;
 
 	const xScale = d3.scaleLinear([0, maxX], [0, width]);
 	const yScale = d3.scaleLinear([0, maxY], [height, 0]);
@@ -109,7 +111,7 @@ function plotData(data, xAttr, yAttr, width, height, margin, options)
 				.data(data)
 				.join("line")
 				.attr("class", "gap")
-				.attr("stroke", d => gapColor(d[xAttr]))
+				.attr("stroke", options.gapColor)
 				.attr("x1", getXScaled)
 				.attr("y1", getYScaled)
 				.attr("x2", d => xScale(d[xAttr] + d[yAttr]))
@@ -117,7 +119,7 @@ function plotData(data, xAttr, yAttr, width, height, margin, options)
 
 		const zoom = d3.zoom()
 			.extent([[0, 0], [width, height]])
-			.scaleExtent([1, 100])
+			.scaleExtent([1, Math.ceil(maxX / 100)])
 			.translateExtent([[0, 0], [width, height]])
 			.on("zoom", function() {
 				const txScale = d3.event.transform.rescaleX(xScale);
@@ -128,38 +130,26 @@ function plotData(data, xAttr, yAttr, width, height, margin, options)
 		svg.call(zoom);
 	}
 }
-function addHandlers1(textNode, defaultValue)
+function addHandlers1(enter, leave)
 {
 	d3.selectAll(".gap")
-		.on("mouseenter", function(d) {
-			textNode.nodeValue = gapInfo(d);
-		})
-		.on("mouseleave", function() {
-			textNode.nodeValue = defaultValue;
-		});
+		.on("mouseenter", enter)
+		.on("mouseleave", leave);
 }
-function addHandlers2(textNode, defaultValue)
+function addHandlers2(enter, leave)
 {
 	d3.selectAll(".gap").each(function(d) {
-		this.addEventListener("mouseenter", function() {
-			textNode.nodeValue = gapInfo(d);
-		});
-		this.addEventListener("mouseleave", function() {
-			textNode.nodeValue = defaultValue;
-		});
+		this.addEventListener("mouseenter", () => enter(d));
+		this.addEventListener("mouseleave", leave);
 	});
 }
-function addHandlers3(textNode, defaultValue)
+function addHandlers3(_enter, leave)
 {
-	const showData = function(event) {
-		textNode.nodeValue = gapInfo(event.currentTarget.__data__);
-	};
-	const hideData = function() {
-		textNode.nodeValue = defaultValue;
-	};
+	const enter = (event) => _enter(event.currentTarget.__data__);
+
 	for (const node of document.getElementsByClassName("gap")) {
-		node.addEventListener("mouseenter", showData, true);
-		node.addEventListener("mouseleave", hideData, true);
+		node.addEventListener("mouseenter", enter);
+		node.addEventListener("mouseleave", leave);
 	}
 }
 function isValidId(s, n)
@@ -170,6 +160,13 @@ function parseMaxNumber(q, v)
 {
 	if (v.match(/^[1-9][0-9]*$/))
 		q.maxNumber = parseInt(v, 10);
+}
+function parseModulus(q, v)
+{
+	if (v.match(/^[1-9][0-9]?$/))
+		q.modulus = parseInt(v, 10);
+	else if (v === "0")
+		q.modulus = 0;
 }
 function parseQueryString(params, handlers, flags)
 {
@@ -214,8 +211,8 @@ function getPrimes(maxNumber)
 }
 function main()
 {
-	const q = {maxNumber: 10000};
-	parseQueryString(q, {max: parseMaxNumber});
+	const q = {maxNumber: 10000, modulus: 3};
+	parseQueryString(q, {max: parseMaxNumber, mod: parseModulus});
 
 	const gaps = [];
 	const primes = getPrimes(q.maxNumber);
@@ -227,14 +224,23 @@ function main()
 	plotData(gaps, 0, 1, 800, 600,
 		{top: 40, left: 50, bottom: 40, right: 40},
 		{
+			gapColor: colorFactory(q.modulus),
 			maxX: q.maxNumber,
 			points: true,
 		});
 
 	const textNode = document.getElementById("gapinfo").firstChild;
-	addHandlers3(textNode, textNode.nodeValue);
+	const textDefault = textNode.nodeValue;
+
+	addHandlers3(function([prime, gap]) {
+		textNode.nodeValue = "Prime = " + prime + ", Gap = " + gap;
+		return true;
+	}, function() {
+		textNode.nodeValue = textDefault;
+		return true;
+	});
 }
-window.addEventListener("DOMContentLoaded", main, false);
+window.addEventListener("DOMContentLoaded", main);
 })();
 </script>
 </head>
