@@ -18,13 +18,12 @@ body {
 }
 .gap {
 	cursor: pointer;
-	stroke: red;
 	stroke-linecap: round;
 	stroke-width: 5px;
 	transition: stroke-width ease 0.5s;
 }
 .gap:hover {
-	stroke: blue;
+	stroke: black;
 	stroke-width: 13px;
 }
 .axis {
@@ -45,6 +44,14 @@ body {
 /* globals d3, document, window */
 (function() {
 "use strict";
+/*
+const hue = n => (n % 4) * (360 / 4);
+const gapColor = n => "hsl(" + hue(n) + ",100%,50%)";
+*/
+const gapColors = ["magenta", "red", "green", "blue"];
+const gapColor = n => gapColors[n % 4];
+const gapInfo = ([prime, gap]) => "Prime = " + prime + ", Gap = " + gap;
+
 function plotData(data, xAttr, yAttr, width, height, margin, options)
 {
 	const maxX = options.maxX || d3.max(data, d => d[xAttr]);
@@ -102,6 +109,7 @@ function plotData(data, xAttr, yAttr, width, height, margin, options)
 				.data(data)
 				.join("line")
 				.attr("class", "gap")
+				.attr("stroke", d => gapColor(d[xAttr]))
 				.attr("x1", getXScaled)
 				.attr("y1", getYScaled)
 				.attr("x2", d => xScale(d[xAttr] + d[yAttr]))
@@ -120,9 +128,6 @@ function plotData(data, xAttr, yAttr, width, height, margin, options)
 		svg.call(zoom);
 	}
 }
-
-const gapInfo = ([prime, gap]) => "Prime = " + prime + ", Gap = " + gap;
-
 function addHandlers1(textNode, defaultValue)
 {
 	d3.selectAll(".gap")
@@ -152,7 +157,7 @@ function addHandlers3(textNode, defaultValue)
 	const hideData = function() {
 		textNode.nodeValue = defaultValue;
 	};
-	for (var node of document.getElementsByClassName("gap")) {
+	for (const node of document.getElementsByClassName("gap")) {
 		node.addEventListener("mouseenter", showData, true);
 		node.addEventListener("mouseleave", hideData, true);
 	}
