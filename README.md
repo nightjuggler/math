@@ -85,3 +85,8 @@ up to a threshold (X axis) as the sum of two odds.
 
 See [https://nightjuggler.com/math/evens_from_odds.html](https://nightjuggler.com/math/evens_from_odds.html)
 
+## prime_gaps.html
+
+Zoomable visualization of [prime gaps](https://en.wikipedia.org/wiki/Prime_gap).
+
+See [https://nightjuggler.com/math/prime_gaps.html](https://nightjuggler.com/math/prime_gaps.html)
