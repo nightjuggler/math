@@ -166,31 +166,28 @@ function parseMaxNumber(q, v)
 	if (v.match(/^[1-9][0-9]*$/))
 		q.maxNumber = parseInt(v, 10);
 }
-function parseQueryString(queryString)
+function parseQueryString(params, handlers, flags)
 {
 	const q = window.location.search;
 
 	if (typeof q !== 'string' || q.charAt(0) !== '?') return;
 
-	const flags = {
-	};
-	const handlers = {
-		max: parseMaxNumber,
-	};
+	if (!flags) flags = {};
+	if (!handlers) handlers = {};
 
-	for (var s of q.substr(1).split('&'))
+	for (const s of q.substr(1).split('&'))
 	{
-		var i = s.indexOf('=');
+		const i = s.indexOf('=');
 		if (i < 0 && isValidId(s, 3) && flags[s]) {
-			queryString[flags[s]] = true;
+			params[flags[s]] = true;
 			continue;
 		}
 		if (i < 1 || i === s.length - 1) continue;
-		var k = s.substr(0, i);
-		var v = s.substr(i + 1);
+		const k = s.substr(0, i);
+		const v = s.substr(i + 1);
 
 		if (isValidId(k, 3) && handlers[k])
-			handlers[k](queryString, v);
+			handlers[k](params, v);
 	}
 }
 function getPrimes(maxNumber)
@@ -213,7 +210,7 @@ function getPrimes(maxNumber)
 function main()
 {
 	const q = {maxNumber: 10000};
-	parseQueryString(q);
+	parseQueryString(q, {max: parseMaxNumber});
 
 	const gaps = [];
 	const primes = getPrimes(q.maxNumber);
