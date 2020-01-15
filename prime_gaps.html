@@ -13,6 +13,9 @@ body {
 #graph {
 	text-align: center;
 }
+#gapinfo {
+	padding: 2px 0 8px 0;
+}
 #outersvg {
 	border: 1px solid black;
 }
@@ -222,7 +225,7 @@ function main()
 		gaps.push([primes[i], primes[i + 1] - primes[i]]);
 
 	plotData(gaps, 0, 1, 800, 600,
-		{top: 40, left: 50, bottom: 40, right: 40},
+		{top: 20, left: 50, bottom: 40, right: 40},
 		{
 			gapColor: colorFactory(q.modulus),
 			maxX: q.maxNumber,
@@ -231,9 +234,11 @@ function main()
 
 	const textNode = document.getElementById("gapinfo").firstChild;
 	const textDefault = textNode.nodeValue;
+	const modulus = q.modulus > 0 ? q.modulus : 4;
 
 	addHandlers3(function([prime, gap]) {
-		textNode.nodeValue = "Prime = " + prime + ", Gap = " + gap;
+		textNode.nodeValue = "Prime = " + prime + " (" + prime % modulus +
+			" mod " + modulus + "), Gap = " + gap;
 		return true;
 	}, function() {
 		textNode.nodeValue = textDefault;
@@ -247,7 +252,7 @@ window.addEventListener("DOMContentLoaded", main);
 <body>
 <div id="graph">
 <div><b>Prime Gaps</b></div>
-<div id="gapinfo">(Select a point on the graph)</div>
-<br></div>
+<div id="gapinfo">(Hover over a gap for info)</div>
+</div>
 </body>
 </html>
