@@ -64,6 +64,46 @@ def filter_primes(residue_filter):
 
 		print "Deleted {} primes ({} - {})".format(num_before - num_after, num_before, num_after)
 
+def gap_info(max_number, max_gaps=20):
+
+	if not (isinstance(max_number, int) and max_number > 4):
+		print "The max_number parameter must be an integer > 4!"
+		return
+	if not (isinstance(max_gaps, int) and max_gaps > 0):
+		print "The max_gaps parameter must be an integer > 0!"
+		return
+
+	init(max_number)
+	gap_count = [0] * max_gaps
+	gaps = [0] * max_gaps
+	max_gap = 0
+
+	for p1, p2 in itertools.izip(primes[1:], primes[2:]):
+		gap = ((p2 - p1) >> 1) - 1
+		if gap < max_gaps:
+			if gaps[gap] == 0:
+				gaps[gap] = p1
+			gap_count[gap] += 1
+		elif gap > max_gap:
+			max_gap = gap
+
+	num_gaps = len(primes) - 2
+	output_spec = " {:4} | {:8} {:>8} | {}"
+
+	print "Number of gaps between primes from {} to {}: {}".format(primes[1], primes[-1], num_gaps)
+	print "Number of gaps counted:", sum(gap_count)
+	print "------+-------------------+------------------"
+	print " Size |       Count       | First Occurrence"
+	print "------+-------------------+------------------"
+
+	for gap, p, n in itertools.izip(itertools.count(), gaps, gap_count):
+		gap = (gap + 1) << 1
+		print output_spec.format(gap, n, percent(n, num_gaps),
+			"None" if p == 0 else "{} - {}".format(p, p + gap))
+
+	if max_gap:
+		print "Found gaps up to size", (max_gap + 1) << 1
+
 def goldbach_partitions(N):
 	if N < 4:
 		return []
@@ -575,6 +615,7 @@ def residue_distribution(max_number=10000, mod=4, residue_filter=()):
 if __name__ == "__main__":
 	import main
 	main.run_command(sys.argv[1:], "partitions", {
+		"gaps": (gap_info, [10000, 20]),
 		"maxevens": (goldbach_max_evens, [10000, 2.5, 2.5, ()]),
 		"modcount": (residue_distribution, [10000, 4, ()]),
 		"modstats": (goldbach_mod_stats, [10000, 4, 1, 3, (), ()]),
