@@ -14,13 +14,18 @@ body {
 #graph {
 	text-align: center;
 }
+#graph div {
+	padding-bottom: 2px;
+}
 svg {
 	border: 1px solid black;
+	margin-top: 2px;
 }
 .axis {
 	font-family: verdana;
 	font-size: 10pt;
 	stroke: black;
+	stroke-opacity: 0.3;
 	stroke-width: 1;
 }
 .line {
@@ -45,14 +50,14 @@ svg {
 "use strict";
 function plotData(data, xAttr, yAttr, width, height, margin, options)
 {
-	const getX = d => d[xAttr];
-	const getY = d => d[yAttr];
+	const maxX = options.maxX || d3.max(data, d => d[xAttr]);
+	const maxY = options.maxY || d3.max(data, d => d[yAttr]);
 
-	const xScale = d3.scaleLinear([0, d3.max(data, getX)], [0, width]);
-	const yScale = d3.scaleLinear([0, d3.max(data, getY)], [height, 0]);
+	const xScale = d3.scaleLinear([0, maxX], [0, width]);
+	const yScale = d3.scaleLinear([0, maxY], [height, 0]);
 
 	const getXScaled = d => xScale(d[xAttr]);
-	const getYScaled = d => yScale(d[yAttr]);
+	const getYScaled = (d, i) => yScale(i + 1);
 
 	const xAxis = d3.axisBottom(xScale).ticks(5);
 	const yAxis = d3.axisLeft(yScale).ticks(5);
@@ -136,27 +141,31 @@ function main()
 
 	const data = evensFromOddsData;
 	const maxEven = q.maxEven;
-	const i = data.findIndex((d, i) => i > 0 && d.maxEven > maxEven && data[i - 1].maxEven >= maxEven);
+	const i = data.findIndex((d, i) => i > 0 && d[1] > maxEven && data[i - 1][1] >= maxEven);
 	if (i >= 0)
 		data.splice(i);
 
-	plotData(data, "maxEven", "numOdds", 800, 600,
+	plotData(data, 1, 0, 800, 600,
 		{top: 40, left: 50, bottom: 40, right: 40},
 		{
 			line: [
-				["line1", x => 90 + 0.01 * x],
-				["line2", x => 50 * Math.log2((x + 1000) / 1000)],
+//				["line1", x => 90 + 0.01 * x],
+//				["line2", x => 50 * Math.log2((x + 1000) / 1000)],
 				["line3", x => 2 * Math.sqrt(x) + x / 1200],
 			],
+			maxY: data.length,
 			points: true,
 		});
 }
-window.addEventListener("DOMContentLoaded", main, false);
+window.addEventListener("DOMContentLoaded", main);
 })();
 </script>
 </head>
 <body>
-<div id="graph"><b>Minimum number of odds > 1 (Y axis) needed to express every even number > 4
-up to a threshold (X axis) as the sum of two odds.</b><br><br></div>
+<div id="graph">
+<div><b>Y = Minimum number of odds > 1 needed to express every even number
+from 6 to X as the sum of two odds.</b></div>
+<div>The green curve is y = 2 Sqrt(x) + x / 1200.</div>
+</div>
 </body>
 </html>

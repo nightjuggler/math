@@ -52,16 +52,18 @@ def evens_from_odds(max_even, first_odd=3, csv=0):
 		return
 
 	if csv == 1:
-		print "numOdds,maxEven"
+		print "odd,maxEven"
 		csv_format = lambda n, e: str(n) + "," + str(e)
 	elif csv == 2:
 		print "var evensFromOddsData = ["
-		csv_format = lambda n, e: "{numOdds:" + str(n) + ",maxEven:" + str(e) + "},"
+		csv_format = lambda n, e: "[" + str(n) + "," + str(e) + "],"
 
 	t1 = time.clock()
 	odds = [first_odd]
 	first_even = first_odd * 2
 	next_even = first_even + 2
+	if csv:
+		print csv_format(first_odd, first_even)
 
 	while next_even <= max_even:
 
@@ -73,7 +75,7 @@ def evens_from_odds(max_even, first_odd=3, csv=0):
 
 		while True:
 			sums = set()
-			for i, n1 in enumerate(odds[::-1], start=1):
+			for i, n1 in enumerate(odds[::-1], 1):
 				for n2 in odds[-i::-1]:
 					if n1 + n2 < next_even:
 						break
@@ -97,7 +99,7 @@ def evens_from_odds(max_even, first_odd=3, csv=0):
 		odds[-1] = best_x
 		next_even = best_x_even
 		if csv:
-			print csv_format(len(odds), next_even - 2)
+			print csv_format(best_x, next_even - 2)
 
 	t2 = time.clock()
 	if csv:
