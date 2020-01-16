@@ -237,8 +237,7 @@ function main()
 	const modulus = q.modulus > 0 ? q.modulus : 4;
 
 	addHandlers3(function([prime, gap]) {
-		textNode.nodeValue = "Prime = " + prime + " (" + prime % modulus +
-			" mod " + modulus + "), Gap = " + gap;
+		textNode.nodeValue = `Prime = ${prime} (${prime % modulus} mod ${modulus}), Gap = ${gap}`;
 		return true;
 	}, function() {
 		textNode.nodeValue = textDefault;
