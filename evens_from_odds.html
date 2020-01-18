@@ -34,12 +34,6 @@ svg {
 	stroke-width: 2;
 }
 .line1 {
-	stroke: blue;
-}
-.line2 {
-	stroke: red;
-}
-.line3 {
 	stroke: green;
 }
 </style>
@@ -50,14 +44,17 @@ svg {
 "use strict";
 function plotData(data, xAttr, yAttr, width, height, margin, options)
 {
+	const minX = options.minX || 0;
+	const minY = options.minY || 0;
+
 	const maxX = options.maxX || d3.max(data, d => d[xAttr]);
 	const maxY = options.maxY || d3.max(data, d => d[yAttr]);
 
-	const xScale = d3.scaleLinear([0, maxX], [0, width]);
-	const yScale = d3.scaleLinear([0, maxY], [height, 0]);
+	const xScale = d3.scaleLinear([minX, maxX], [0, width]);
+	const yScale = d3.scaleLinear([minY, maxY], [height, 0]);
 
 	const getXScaled = d => xScale(d[xAttr]);
-	const getYScaled = (d, i) => yScale(i + 1);
+	const getYScaled = (d, i) => yScale(minY + i + 1);
 
 	const xAxis = d3.axisBottom(xScale).ticks(5);
 	const yAxis = d3.axisLeft(yScale).ticks(5);
@@ -105,6 +102,11 @@ function isValidId(s, n)
 {
 	return s.length <= n && s.match(/^[a-z][_0-9a-z]*$/) !== null;
 }
+function parseMinEven(q, v)
+{
+	if (v.match(/^[1-9][0-9]*$/))
+		q.minEven = parseInt(v, 10);
+}
 function parseMaxEven(q, v)
 {
 	if (v.match(/^[1-9][0-9]*$/))
@@ -122,7 +124,7 @@ function parseQueryString(params, handlers, flags)
 	for (const s of q.substr(1).split('&'))
 	{
 		const i = s.indexOf('=');
-		if (i < 0 && isValidId(s, 3) && flags[s]) {
+		if (i < 0 && isValidId(s, 6) && flags[s]) {
 			params[flags[s]] = true;
 			continue;
 		}
@@ -130,32 +132,51 @@ function parseQueryString(params, handlers, flags)
 		const k = s.substr(0, i);
 		const v = s.substr(i + 1);
 
-		if (isValidId(k, 3) && handlers[k])
+		if (isValidId(k, 6) && handlers[k])
 			handlers[k](params, v);
 	}
 }
 function main()
 {
 	const q = {};
-	parseQueryString(q, {max: parseMaxEven});
+	parseQueryString(q, {min: parseMinEven, max: parseMaxEven}, {line: "line"});
 
 	const data = evensFromOddsData;
-	const maxEven = q.maxEven;
-	const i = data.findIndex((d, i) => i > 0 && d[1] > maxEven && data[i - 1][1] >= maxEven);
-	if (i >= 0)
-		data.splice(i);
+	const options = {
+		minX: 0,
+		maxX: data[data.length - 1][1],
+		minY: 0,
+		maxY: data.length,
+
+		line: [
+			["line1", x => 2 * Math.sqrt(x) + x / 1200],
+		],
+		points: true,
+	};
+	if (q.line)
+		options.line.unshift(["", null]);
+
+	if (q.maxEven) {
+		const maxEven = q.maxEven;
+		const i = data.findIndex((d, i) => i > 0 && d[1] > maxEven && data[i - 1][1] >= maxEven);
+		if (i > 0) {
+			data.splice(i);
+			options.maxX = maxEven;
+			options.maxY = i;
+		}
+	}
+	if (q.minEven) {
+		const minEven = q.minEven;
+		const i = data.findIndex(d => d[1] >= minEven);
+		if (i > 0) {
+			data.splice(0, i);
+			options.minX = minEven;
+			options.minY = i;
+		}
+	}
 
 	plotData(data, 1, 0, 800, 600,
-		{top: 40, left: 50, bottom: 40, right: 40},
-		{
-			line: [
-//				["line1", x => 90 + 0.01 * x],
-//				["line2", x => 50 * Math.log2((x + 1000) / 1000)],
-				["line3", x => 2 * Math.sqrt(x) + x / 1200],
-			],
-			maxY: data.length,
-			points: true,
-		});
+		{top: 40, left: 50, bottom: 40, right: 40}, options);
 }
 window.addEventListener("DOMContentLoaded", main);
 })();
