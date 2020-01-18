@@ -62,42 +62,43 @@ def evens_from_odds(max_even, first_odd=3, csv=0):
 	odds = [first_odd]
 	first_even = first_odd * 2
 	next_even = first_even + 2
+	next_sums = set()
 	if csv:
 		print csv_format(first_odd, first_even)
 
 	while next_even <= max_even:
 
 		x = odds[-1] + 2
-		odds.append(x)
-
-		best_x = 0
-		best_x_even = 0
+		best_x = None
+		best_x_even = next_even + 2
+		best_x_sums = None
 
 		while True:
-			sums = set()
-			for i, n1 in enumerate(odds[::-1], 1):
-				for n2 in odds[-i::-1]:
-					if n1 + n2 < next_even:
-						break
-					sums.add(n1 + n2)
-				if n1 == n2:
+			sums = {x + x}
+			for n in odds[::-1]:
+				if n + x < next_even:
 					break
+				sums.add(n + x)
 
 			x_even = next_even
-			while x_even in sums:
+			while x_even in sums or x_even in next_sums:
 				x_even += 2
 
-			if x_even > next_even and x_even >= best_x_even:
+			if x_even >= best_x_even:
 				best_x = x
 				best_x_even = x_even
+				best_x_sums = sums
 
 			x += 2
 			if x + first_odd > next_even:
 				break
-			odds[-1] = x
 
-		odds[-1] = best_x
+		if best_x is None:
+			break
+		odds.append(best_x)
 		next_even = best_x_even
+		next_sums.update(best_x_sums)
+		next_sums = {s for s in next_sums if s > next_even}
 		if csv:
 			print csv_format(best_x, next_even - 2)
 
