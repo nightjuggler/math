@@ -42,18 +42,23 @@ svg {
 /* globals evensFromOddsData */
 (function() {
 "use strict";
-function plotData(data, xAttr, yAttr, width, height, margin, options)
+function plotData(data, width, height, margin, options)
 {
+	if (!options)
+		options = {};
+	if (!options.lines && !options.points)
+		options.lines = [{}];
+
 	const minX = options.minX || 0;
 	const minY = options.minY || 0;
 
-	const maxX = options.maxX || d3.max(data, d => d[xAttr]);
-	const maxY = options.maxY || d3.max(data, d => d[yAttr]);
+	const maxX = options.maxX || data[data.length - 1][1];
+	const maxY = options.maxY || data.length;
 
 	const xScale = d3.scaleLinear([minX, maxX], [0, width]);
 	const yScale = d3.scaleLinear([minY, maxY], [height, 0]);
 
-	const getXScaled = d => xScale(d[xAttr]);
+	const getXScaled = d => xScale(d[1]);
 	const getYScaled = (d, i) => yScale(minY + i + 1);
 
 	const xAxis = d3.axisBottom(xScale).ticks(5);
@@ -66,26 +71,20 @@ function plotData(data, xAttr, yAttr, width, height, margin, options)
 		.append("g")
 			.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-	if (!options)
-		options = {};
-	if (options.line === undefined && options.points === undefined)
-		options.line = [{}];
-	if (options.line)
-		for (const lineOptions of options.line) {
-			const line = d3.line().x(getXScaled);
-			if (lineOptions.y) {
-				const yFunc = lineOptions.y;
-				line.y(d => yScale(yFunc(d[xAttr])));
+	if (options.lines)
+		for (const line of options.lines) {
+			const d3line = d3.line().x(getXScaled);
+			if (line.y) {
+				const yFunc = line.y;
+				d3line.y(d => yScale(yFunc(d[1])));
 			} else
-				line.y(getYScaled);
-			if (lineOptions.curve)
-				line.curve(lineOptions.curve);
-			const className = lineOptions.class;
+				d3line.y(getYScaled);
+			if (line.curve)
+				d3line.curve(line.curve);
 			svg.append("path")
-				.attr("class", className ? "line " + className : "line")
-				.attr("d", line(data));
+				.attr("class", line.class ? "line " + line.class : "line")
+				.attr("d", d3line(data));
 		}
-
 	if (options.points)
 		svg.selectAll("circle")
 			.data(data)
@@ -147,18 +146,13 @@ function main()
 
 	const data = evensFromOddsData;
 	const options = {
-		minX: 0,
-		maxX: data[data.length - 1][1],
-		minY: 0,
-		maxY: data.length,
-
-		line: [
+		lines: [
 			{class: "line1", y: x => 2 * Math.sqrt(x) + x / 1200},
 		],
 		points: true,
 	};
 	if (q.line)
-		options.line.unshift({curve: d3.curveStepAfter});
+		options.lines.unshift({curve: d3.curveStepAfter});
 
 	if (q.maxEven) {
 		const maxEven = q.maxEven;
@@ -179,7 +173,7 @@ function main()
 		}
 	}
 
-	plotData(data, 1, 0, 800, 600,
+	plotData(data, 800, 600,
 		{top: 40, left: 50, bottom: 40, right: 40}, options);
 }
 window.addEventListener("DOMContentLoaded", main);
