@@ -69,14 +69,18 @@ function plotData(data, xAttr, yAttr, width, height, margin, options)
 	if (!options)
 		options = {};
 	if (options.line === undefined && options.points === undefined)
-		options.line = [["", null]];
+		options.line = [{}];
 	if (options.line)
-		for (let [className, yFunc] of options.line) {
-			let line = d3.line().x(getXScaled);
-			if (yFunc === null)
-				line.y(getYScaled);
-			else
+		for (const lineOptions of options.line) {
+			const line = d3.line().x(getXScaled);
+			if (lineOptions.y) {
+				const yFunc = lineOptions.y;
 				line.y(d => yScale(yFunc(d[xAttr])));
+			} else
+				line.y(getYScaled);
+			if (lineOptions.curve)
+				line.curve(lineOptions.curve);
+			const className = lineOptions.class;
 			svg.append("path")
 				.attr("class", className ? "line " + className : "line")
 				.attr("d", line(data));
@@ -149,12 +153,12 @@ function main()
 		maxY: data.length,
 
 		line: [
-			["line1", x => 2 * Math.sqrt(x) + x / 1200],
+			{class: "line1", y: x => 2 * Math.sqrt(x) + x / 1200},
 		],
 		points: true,
 	};
 	if (q.line)
-		options.line.unshift(["", null]);
+		options.line.unshift({curve: d3.curveStepAfter});
 
 	if (q.maxEven) {
 		const maxEven = q.maxEven;
