@@ -37,11 +37,6 @@ body {
 	stroke-opacity: 0.3;
 	stroke-width: 1;
 }
-.line {
-	fill: none;
-	stroke: magenta;
-	stroke-width: 2;
-}
 </style>
 <script>
 /* globals d3, document, window */
@@ -57,16 +52,21 @@ function colorFactory(modulus)
 	modulus = colors.length;
 	return ([n]) => colors[n % modulus];
 }
-function plotData(data, xAttr, yAttr, width, height, margin, options)
+function plotData(data, width, height, margin, options)
 {
-	const maxX = options.maxX || d3.max(data, d => d[xAttr]) + 1;
-	const maxY = options.maxY || d3.max(data, d => d[yAttr]) + 1;
+	if (!options)
+		options = {};
+	if (!options.gapColor)
+		options.gapColor = colorFactory(0);
+
+	const maxX = options.maxX || d3.max(data, ([p]) => p) + 1;
+	const maxY = options.maxY || d3.max(data, ([, gap]) => gap) + 1;
 
 	const xScale = d3.scaleLinear([0, maxX], [0, width]);
 	const yScale = d3.scaleLinear([0, maxY], [height, 0]);
 
-	const getXScaled = d => xScale(d[xAttr]);
-	const getYScaled = d => yScale(d[yAttr]);
+	const getXScaled = ([p]) => xScale(p);
+	const getYScaled = ([, gap]) => yScale(gap);
 
 	const xAxis = d3.axisBottom(xScale).tickSizeInner(height + 8).tickSizeOuter(height);
 	const yAxis = d3.axisLeft(yScale).tickSizeInner(width + 8).tickSizeOuter(width);
@@ -86,52 +86,34 @@ function plotData(data, xAttr, yAttr, width, height, margin, options)
 		.attr("transform", "translate(" + (margin.left + width) + "," + margin.top + ")")
 		.call(yAxis);
 
-	if (!options)
-		options = {};
-	if (options.line === undefined && options.points === undefined)
-		options.line = [["", null]];
-	if (options.line)
-		for (let [className, yFunc] of options.line) {
-			let line = d3.line().x(getXScaled);
-			if (yFunc === null)
-				line.y(getYScaled);
-			else
-				line.y(d => yScale(yFunc(d[xAttr])));
-			svg.append("path")
-				.attr("class", className ? "line " + className : "line")
-				.attr("d", line(data));
-		}
-	if (options.points)
-	{
-		const gaps = svg.append("svg")
-				.attr("id", "innersvg")
-				.attr("x", margin.left)
-				.attr("y", margin.top)
-				.attr("width", width)
-				.attr("height", height)
-				.attr("viewBox", [0, 0, width, height])
-			.selectAll(".gap")
-				.data(data)
-				.join("line")
-				.attr("class", "gap")
-				.attr("stroke", options.gapColor)
-				.attr("x1", getXScaled)
-				.attr("y1", getYScaled)
-				.attr("x2", d => xScale(d[xAttr] + d[yAttr]))
-				.attr("y2", getYScaled);
+	const gaps = svg.append("svg")
+			.attr("id", "innersvg")
+			.attr("x", margin.left)
+			.attr("y", margin.top)
+			.attr("width", width)
+			.attr("height", height)
+			.attr("viewBox", [0, 0, width, height])
+		.selectAll(".gap")
+			.data(data)
+			.join("line")
+			.attr("class", "gap")
+			.attr("stroke", options.gapColor)
+			.attr("x1", getXScaled)
+			.attr("y1", getYScaled)
+			.attr("x2", ([p, gap]) => xScale(p + gap))
+			.attr("y2", getYScaled);
 
-		const zoom = d3.zoom()
-			.extent([[0, 0], [width, height]])
-			.scaleExtent([1, Math.ceil(maxX / 100)])
-			.translateExtent([[0, 0], [width, height]])
-			.on("zoom", function() {
-				const txScale = d3.event.transform.rescaleX(xScale);
-				gX.call(xAxis.scale(txScale));
-				gaps.attr("x1", d => txScale(d[xAttr]))
-					.attr("x2", d => txScale(d[xAttr] + d[yAttr]));
-			});
-		svg.call(zoom);
-	}
+	const zoom = d3.zoom()
+		.extent([[0, 0], [width, height]])
+		.scaleExtent([1, Math.ceil(maxX / 100)])
+		.translateExtent([[0, 0], [width, height]])
+		.on("zoom", function() {
+			const txScale = d3.event.transform.rescaleX(xScale);
+			gX.call(xAxis.scale(txScale));
+			gaps.attr("x1", ([p]) => txScale(p))
+				.attr("x2", ([p, gap]) => txScale(p + gap));
+		});
+	svg.call(zoom);
 }
 function addHandlers1(enter, leave)
 {
@@ -224,12 +206,11 @@ function main()
 	for (var i = 0; i < maxIndex; i += 1)
 		gaps.push([primes[i], primes[i + 1] - primes[i]]);
 
-	plotData(gaps, 0, 1, 800, 600,
+	plotData(gaps, 800, 600,
 		{top: 20, left: 50, bottom: 40, right: 40},
 		{
 			gapColor: colorFactory(q.modulus),
 			maxX: q.maxNumber,
-			points: true,
 		});
 
 	const textNode = document.getElementById("gapinfo").firstChild;
