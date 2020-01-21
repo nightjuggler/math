@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Polar Curve Explorer</title>
+<script src="https://d3js.org/d3.v5.min.js"></script>
+<style>
+body {
+	background-color: white;
+	font-family: verdana;
+	font-size: 10pt;
+}
+#graph {
+	text-align: center;
+}
+#graph div {
+	padding-bottom: 2px;
+}
+svg {
+	border: 1px solid black;
+	margin-top: 2px;
+}
+circle {
+	fill: none;
+	stroke: black;
+	stroke-opacity: 0.3;
+	stroke-width: 1;
+}
+.axis {
+	font-family: verdana;
+	font-size: 10pt;
+	stroke: black;
+	stroke-opacity: 0.3;
+	stroke-width: 1;
+}
+.line {
+	fill: none;
+	stroke: magenta;
+	stroke-width: 2;
+}
+</style>
+<script>
+/* globals d3, setTimeout, window */
+(function() {
+"use strict";
+function createSvg(width, height)
+{
+	const centerX = Math.floor(width / 2);
+	const centerY = Math.floor(height / 2);
+
+	const svg = d3.select("#graph")
+		.append("svg")
+			.attr("width", width)
+			.attr("height", height)
+		.append("g")
+			.attr("transform", "translate(" + centerX + "," + centerY + ")");
+
+	svg.append("line")
+		.attr("class", "axis")
+		.attr("x1", 0)
+		.attr("y1", centerY)
+		.attr("x2", 0)
+		.attr("y2", -centerY);
+	svg.append("line")
+		.attr("class", "axis")
+		.attr("x1", -centerX)
+		.attr("y1", 0)
+		.attr("x2", centerX)
+		.attr("y2", 0);
+
+	return svg;
+}
+function isValidId(s, n)
+{
+	return s.length <= n && s.match(/^[a-z][_0-9a-z]*$/) !== null;
+}
+function parseQueryString(params, handlers, flags)
+{
+	const q = window.location.search;
+
+	if (typeof q !== 'string' || q.charAt(0) !== '?') return;
+
+	if (!flags) flags = {};
+	if (!handlers) handlers = {};
+
+	for (const s of q.substr(1).split('&'))
+	{
+		const i = s.indexOf('=');
+		if (i < 0 && isValidId(s, 6) && flags[s]) {
+			params[flags[s]] = true;
+			continue;
+		}
+		if (i < 1 || i === s.length - 1) continue;
+		const k = s.substr(0, i);
+		const v = s.substr(i + 1);
+
+		if (isValidId(k, 6) && handlers[k])
+			handlers[k](params, v);
+	}
+}
+function setAngle(config)
+{
+	let {thetaStart, thetaEnd, thetaStep, numPoints} = config;
+
+	if (typeof thetaStart !== "number")
+		thetaStart = 0;
+
+	if (typeof thetaEnd === "number" && thetaStart < thetaEnd) {
+		if (typeof thetaStep === "number" && thetaStep > 0)
+			numPoints = (thetaEnd - thetaStart) / thetaStep + 1;
+		else if (typeof numPoints === "number" && numPoints > 1)
+			thetaStep = (thetaEnd - thetaStart) / (numPoints - 1);
+		else {
+			thetaStep = Math.PI / 180; // 1 degree;
+			numPoints = (thetaEnd - thetaStart) / thetaStep + 1;
+		}
+	} else {
+		if (!(typeof thetaStep === "number" && thetaStep > 0))
+			thetaStep = Math.PI / 180; // 1 degree;
+		if (!(typeof numPoints === "number" && numPoints > 1))
+			numPoints = 360 + 1;
+	}
+
+	const thetaAdjust = Math.PI / 2 - thetaStart;
+	config.angle = i => thetaAdjust - i * thetaStep;
+	config.theta = i => thetaStart + i * thetaStep;
+
+	config.thetaStart = thetaStart;
+	config.thetaStep = thetaStep;
+	config.numPoints = numPoints;
+
+	return config.theta;
+}
+function logSpiral(config)
+{
+	const theta = setAngle(config);
+
+	let {initialRadius, slopeAngle, tangentAngle, growthFactor, growthAngle} = config;
+
+	if (!(typeof initialRadius === "number" && initialRadius !== 0))
+		initialRadius = 40;
+	if (!(typeof growthFactor === "number" && growthFactor > 0))
+		growthFactor = 1.5;
+	if (!(typeof growthAngle === "number" && growthAngle > 0))
+		growthAngle = Math.PI; // 180 degrees
+
+	if (typeof slopeAngle === "number") {
+		// tangentAngle = math.PI / 2 - slopeAngle;
+		const k = Math.tan(slopeAngle);
+		config.radius = i => initialRadius * Math.exp(k * theta(i));
+		growthFactor = Math.exp(k * growthAngle);
+	} else if (typeof tangentAngle === "number" && tangentAngle !== 0) {
+		const k = 1 / Math.tan(tangentAngle);
+		config.radius = i => initialRadius * Math.exp(k * theta(i));
+		growthFactor = Math.exp(k * growthAngle);
+	} else {
+		config.radius = i => initialRadius * Math.pow(growthFactor, theta(i) / growthAngle);
+	}
+
+	config.grid = function(svg) {
+		for (let i = 0; i < 6; i += 1)
+			svg.append("circle")
+				.attr("cx", 0)
+				.attr("cy", 0)
+				.attr("r", initialRadius * Math.pow(growthFactor, i));
+	};
+	return config;
+}
+function roseCurve(config) // See https://en.wikipedia.org/wiki/Rose_(mathematics)
+{
+	const theta = setAngle(config);
+
+	let {scale, k, offset} = config;
+
+	if (!(typeof scale === "number" && scale > 0))
+		scale = 200;
+	if (typeof k !== "number")
+		k = 4 / 9;
+	if (typeof offset !== "number")
+		offset = 0;
+
+	config.radius = i => scale * Math.cos(k * theta(i)) + offset;
+
+	config.grid = function(svg) {
+		svg.append("circle")
+			.attr("cx", 0)
+			.attr("cy", 0)
+			.attr("r", scale);
+	};
+	return config;
+}
+function spiral(config)
+{
+	const theta = setAngle(config);
+
+	let {a, b, c} = config;
+
+	if (typeof a !== "number") a = 0;
+	if (typeof b !== "number") b = 12;
+	if (typeof c !== "number" || c === 0) c = 1;
+
+	if (c === 1)
+		config.radius = i => a + b * theta(i);
+	else
+		config.radius = i => a + b * Math.pow(theta(i), 1 / c);
+
+	return config;
+}
+function main()
+{
+	const q = {};
+	parseQueryString(q, {}, {});
+
+	const goldenRatio = (1 + Math.sqrt(5)) / 2;
+	const goldenSpiralGrowthAngle = Math.PI / 2;
+	const spiralGrowthAngle = 360 * Math.PI / 180;
+	const numRotations = 4;
+	const thetaEnd = numRotations * 2 * Math.PI;
+
+	const config = [
+		logSpiral({
+			thetaEnd: thetaEnd,
+			growthFactor: goldenRatio,
+			growthAngle: spiralGrowthAngle,
+		}),
+		logSpiral({
+			thetaEnd: thetaEnd,
+			slopeAngle: Math.atan2(Math.log(goldenRatio), spiralGrowthAngle),
+			growthFactor: goldenRatio,
+			growthAngle: spiralGrowthAngle,
+		}),
+		logSpiral({
+			thetaEnd: thetaEnd,
+			tangentAngle: Math.PI / 2 - Math.atan2(Math.log(goldenRatio), spiralGrowthAngle),
+			growthFactor: goldenRatio,
+			growthAngle: spiralGrowthAngle,
+		}),
+		logSpiral({
+			thetaEnd: thetaEnd,
+			slopeAngle: 6 * Math.PI / 180,
+		}),
+		logSpiral({
+			thetaEnd: thetaEnd,
+			tangentAngle: 84 * Math.PI / 180,
+		}),
+		roseCurve({
+			k: 4 / 9,
+			thetaEnd: 32 * Math.PI,
+			thetaStep: 0.5 * Math.PI / 180,
+		}),
+		roseCurve({
+			k: 5,
+			offset: 60,
+			thetaEnd: 32 * Math.PI,
+			thetaStep: 0.5 * Math.PI / 180,
+		}),
+		roseCurve({
+			k: Math.PI,
+			thetaEnd: 32 * Math.PI,
+			thetaStep: 0.5 * Math.PI / 180,
+			animate: {step: 16, delay: 20},
+		}),
+		spiral({
+			thetaEnd: thetaEnd,
+		}),
+		spiral({
+			thetaEnd: 16 * Math.PI,
+			b: 40, c: 2, // Fermat's spiral
+		}),
+		spiral({
+			thetaStart: Math.PI / 4,
+			thetaEnd: 16 * Math.PI,
+			b: 400, c: -1, // Hyperbolic spiral
+		}),
+		spiral({
+			thetaStart: Math.PI / 12,
+			thetaEnd: 32 * Math.PI,
+			b: 240, c: -2, // Lituus
+		}),
+	][7];
+
+	const {numPoints, angle, radius} = config;
+	const data = Array.from({length: numPoints}, (v, i) => [angle(i), radius(i)]);
+
+	const svg = createSvg(900, 680);
+	if (config.grid)
+		config.grid(svg);
+
+	const d3line = d3.lineRadial();
+	const path = svg.append("path").attr("class", "line");
+
+	if (config.animate) {
+		let i = 0;
+		const {step = 8, delay = 50} = config.animate;
+		const update = function() {
+			i += step;
+			path.attr("d", d3line(data.slice(0, i)));
+			if (i < numPoints)
+				setTimeout(update, delay);
+		};
+		update();
+	} else {
+		path.attr("d", d3line(data));
+	}
+}
+window.addEventListener("DOMContentLoaded", main);
+})();
+</script>
+</head>
+<body>
+<div id="graph">
+</div>
+</body>
+</html>
