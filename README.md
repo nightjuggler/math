@@ -90,3 +90,10 @@ See [https://nightjuggler.com/math/evens_from_odds.html](https://nightjuggler.co
 Zoomable visualization of [prime gaps](https://en.wikipedia.org/wiki/Prime_gap).
 
 See [https://nightjuggler.com/math/prime_gaps.html](https://nightjuggler.com/math/prime_gaps.html)
+
+## polar.html
+
+JavaScript for graphing spirals and roses.
+
+See [https://nightjuggler.com/math/polar.html](https://nightjuggler.com/math/polar.html)
+
