@@ -246,6 +246,7 @@ function roseCurve(config) // See https://en.wikipedia.org/wiki/Rose_(mathematic
 		offset = 0;
 
 	config.radius = i => scale * Math.cos(k * theta(i)) + offset;
+	config.derivative = i => scale * k * -Math.sin(k * theta(i));
 
 	config.grid = function(svg) {
 		svg.append("circle")
@@ -268,9 +269,10 @@ function spiral(config)
 	if (c === 1) {
 		config.radius = i => a + b * theta(i);
 		config.derivative = i => b;
-	} else
+	} else {
 		config.radius = i => a + b * Math.pow(theta(i), 1 / c);
-
+		config.derivative = i => b * Math.pow(theta(i), 1 / c - 1) / c;
+	}
 	return config;
 }
 function main()
@@ -333,6 +335,12 @@ function main()
 			animate: {step: 16, delay: 20},
 		}),
 		roseCurve({
+			k: Math.E,
+			thetaEnd: 32 * Math.PI,
+			thetaStep: 0.5 * Math.PI / 180,
+			animate: {step: 16, delay: 20},
+		}),
+		roseCurve({
 			scale: 200, k: 1, offset: 100, // Limacon: r = 200 * (0.5 + cos(theta))
 			thetaEnd: 2 * Math.PI,
 			thetaStep: 0.5 * Math.PI / 180,
@@ -343,6 +351,7 @@ function main()
 		spiral({
 			thetaEnd: 16 * Math.PI,
 			b: 40, c: 2, // Fermat's spiral
+			animateTangent: {delay: 50},
 		}),
 		spiral({
 			thetaStart: Math.PI / 4,
