@@ -38,9 +38,17 @@ circle {
 	stroke: magenta;
 	stroke-width: 2;
 }
+.radial {
+	stroke: green;
+	stroke-width: 2;
+}
+.tangent {
+	stroke: blue;
+	stroke-width: 2;
+}
 </style>
 <script>
-/* globals d3, setTimeout, window */
+/* globals d3, document, setTimeout, window */
 (function() {
 "use strict";
 function createSvg(width, height)
@@ -98,6 +106,53 @@ function parseQueryString(params, handlers, flags)
 			handlers[k](params, v);
 	}
 }
+function updateTangent(i, config, tangent, radial, textNode)
+{
+/*
+	The slope m of the line tangent to the curve r = f(t) at point (r, t) is
+
+	m = dy/dx = ( (dr/dt)*sin(t) + r*cos(t) ) / ( (dr/dt)*cos(t) - r*sin(t) )
+*/
+	const {derivative, radius, theta} = config;
+
+	const drdt = derivative(i);
+	const r = radius(i);
+	const sin = Math.sin(theta(i));
+	const cos = Math.cos(theta(i));
+	const x = r * cos;
+	const y = r * sin;
+	const m = (drdt * sin + x) / (drdt * cos - y);
+/*
+	The tangent of the slope angle a of the tangent line is the slope m: tan(a) = m
+
+	To move a distance h along the tangent line, calculate dx and dy:
+
+	dx = h * cos(a) = h / sqrt(1 + tan(a)*tan(a)) = h / sqrt(1 + m*m)
+	dy = h * sin(a) = h * tan(a) / sqrt(1 + tan(a)*tan(a)) = tan(a) * dx = m * dx
+*/
+	const h = 200;
+	const dx = h / Math.sqrt(1 + m * m);
+	const dy = m * dx;
+
+	tangent.attr("x1", x + dx).attr("y1", -(y + dy)).attr("x2", x - dx).attr("y2", -(y - dy));
+	radial.attr("x2", x).attr("y2", -y);
+/*
+	The tangent of the tangent angle psi of the curve r = f(t) at point (r, t) is
+
+	tan(psi) = r / (dr/dt)
+
+	The tangent angle is the angle between the radial line from the origin to the point (r, t)
+	and the line tangent to the curve at point (r, t).
+
+	The slope angle of the curve at point (r, t) is pi/2 - psi
+*/
+	if (textNode) {
+		const tangentAngle = Math.atan2(r, drdt) * 180 / Math.PI;
+		const slopeAngle = 90 - tangentAngle;
+		textNode.nodeValue = "slope angle = " + slopeAngle.toFixed(2) + " degrees, " +
+			"tangent angle = " + tangentAngle.toFixed(2) + " degrees";
+	}
+}
 function setAngle(config)
 {
 	let {thetaStart, thetaEnd, thetaStep, numPoints} = config;
@@ -146,15 +201,26 @@ function logSpiral(config)
 
 	if (typeof slopeAngle === "number") {
 		// tangentAngle = math.PI / 2 - slopeAngle;
+
 		const k = Math.tan(slopeAngle);
-		config.radius = i => initialRadius * Math.exp(k * theta(i));
+		const radius = i => initialRadius * Math.exp(k * theta(i));
+		config.radius = radius;
+		config.derivative = i => k * radius(i);
 		growthFactor = Math.exp(k * growthAngle);
+
 	} else if (typeof tangentAngle === "number" && tangentAngle !== 0) {
+
 		const k = 1 / Math.tan(tangentAngle);
-		config.radius = i => initialRadius * Math.exp(k * theta(i));
+		const radius = i => initialRadius * Math.exp(k * theta(i));
+		config.radius = radius;
+		config.derivative = i => k * radius(i);
 		growthFactor = Math.exp(k * growthAngle);
+
 	} else {
-		config.radius = i => initialRadius * Math.pow(growthFactor, theta(i) / growthAngle);
+		const k = Math.log(growthFactor) / growthAngle;
+		const radius = i => initialRadius * Math.pow(growthFactor, theta(i) / growthAngle);
+		config.radius = radius;
+		config.derivative = i => k * radius(i);
 	}
 
 	config.grid = function(svg) {
@@ -199,9 +265,10 @@ function spiral(config)
 	if (typeof b !== "number") b = 12;
 	if (typeof c !== "number" || c === 0) c = 1;
 
-	if (c === 1)
+	if (c === 1) {
 		config.radius = i => a + b * theta(i);
-	else
+		config.derivative = i => b;
+	} else
 		config.radius = i => a + b * Math.pow(theta(i), 1 / c);
 
 	return config;
@@ -213,7 +280,7 @@ function main()
 
 	const goldenRatio = (1 + Math.sqrt(5)) / 2;
 	const goldenSpiralGrowthAngle = Math.PI / 2;
-	const spiralGrowthAngle = 360 * Math.PI / 180;
+	const spiralGrowthAngle = 2 * Math.PI;
 	const numRotations = 4;
 	const thetaEnd = numRotations * 2 * Math.PI;
 
@@ -222,26 +289,31 @@ function main()
 			thetaEnd: thetaEnd,
 			growthFactor: goldenRatio,
 			growthAngle: spiralGrowthAngle,
+			animateTangent: {},
 		}),
 		logSpiral({
 			thetaEnd: thetaEnd,
 			slopeAngle: Math.atan2(Math.log(goldenRatio), spiralGrowthAngle),
 			growthFactor: goldenRatio,
 			growthAngle: spiralGrowthAngle,
+			animateTangent: {},
 		}),
 		logSpiral({
 			thetaEnd: thetaEnd,
 			tangentAngle: Math.PI / 2 - Math.atan2(Math.log(goldenRatio), spiralGrowthAngle),
 			growthFactor: goldenRatio,
 			growthAngle: spiralGrowthAngle,
+			animateTangent: {},
 		}),
 		logSpiral({
 			thetaEnd: thetaEnd,
 			slopeAngle: 6 * Math.PI / 180,
+			animateTangent: {},
 		}),
 		logSpiral({
 			thetaEnd: thetaEnd,
 			tangentAngle: 84 * Math.PI / 180,
+			animateTangent: {},
 		}),
 		roseCurve({
 			k: 4 / 9,
@@ -259,6 +331,11 @@ function main()
 			thetaEnd: 32 * Math.PI,
 			thetaStep: 0.5 * Math.PI / 180,
 			animate: {step: 16, delay: 20},
+		}),
+		roseCurve({
+			scale: 200, k: 1, offset: 100, // Limacon: r = 200 * (0.5 + cos(theta))
+			thetaEnd: 2 * Math.PI,
+			thetaStep: 0.5 * Math.PI / 180,
 		}),
 		spiral({
 			thetaEnd: thetaEnd,
@@ -302,6 +379,25 @@ function main()
 	} else {
 		path.attr("d", d3line(data));
 	}
+
+	if (config.derivative && config.animateTangent) {
+		const tangent = svg.append("line").attr("class", "tangent");
+		const radial = svg.append("line").attr("class", "radial");
+		const textNode = document.getElementById("textnode").firstChild;
+
+		let i = 0;
+		const n = numPoints - 1;
+		const {step = 4, delay = 100} = config.animateTangent;
+		const update = function() {
+			updateTangent(i, config, tangent, radial, textNode);
+			if (i < n) {
+				i += step;
+				if (i > n) i = n;
+				setTimeout(update, delay);
+			}
+		};
+		update();
+	}
 }
 window.addEventListener("DOMContentLoaded", main);
 })();
@@ -309,6 +405,7 @@ window.addEventListener("DOMContentLoaded", main);
 </head>
 <body>
 <div id="graph">
+<div id="textnode">&nbsp;</div>
 </div>
 </body>
 </html>
