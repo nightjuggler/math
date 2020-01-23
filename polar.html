@@ -53,7 +53,7 @@ circle {
 }
 .curve {
 	fill: none;
-	stroke: magenta;
+	stroke: url(#gradient1);
 	stroke-width: 2;
 }
 .radial {
@@ -338,21 +338,92 @@ function spiral(config)
 	}
 	return config;
 }
+function morph(config, path, d3line)
+{
+	const props = config.morph;
+	const delay = config.morphDelay || 100;
+	const update = function() {
+		let done = true;
+		for (const [prop, step, maxValue] of props)
+			if (config[prop] + step < maxValue) {
+				done = false;
+				config[prop] += step;
+			} else
+				config[prop] = maxValue;
+
+		const {numPoints, angle, radius} = config.curve(config);
+		const data = Array.from({length: numPoints}, (v, i) => [angle(i), radius(i)]);
+		path.attr("d", d3line(data));
+		if (!done)
+			setTimeout(update, delay);
+	};
+	setTimeout(update, delay);
+}
 function predefinedConfig(i)
 {
 	const growthFactor = mathConstants.phi;
 	const growthAngle = 2 * Math.PI;
 	const configs = [
-		logSpiral({
+		{// demo=1
+			curve: logSpiral,
 			slopeAngle: Math.atan2(Math.log(growthFactor), growthAngle),
 			growthAngle: growthAngle,
 			thetaEnd: 8 * Math.PI,
-		}),
-		logSpiral({
+		},
+		{// demo=2
+			curve: logSpiral,
 			tangentAngle: Math.PI / 2 - Math.atan2(Math.log(growthFactor), growthAngle),
 			growthAngle: growthAngle,
 			thetaEnd: 8 * Math.PI,
-		}),
+		},
+		{// demo=3
+			curve: roseCurve,
+			scale: 100, k: Math.E, offset: -100,
+			morph: [["scale", 1, 300], ["k", 0.01, Math.E + 2], ["offset", 1, 100]],
+			morphDelay: 100,
+			thetaEnd: 32 * Math.PI,
+			thetaStep: Math.PI / 180,
+		},
+		{// demo=4
+			curve: roseCurve,
+			scale: 100, k: 4/9, offset: -220,
+			morph: [["offset", 1, 220]],
+			morphDelay: 20,
+			thetaEnd: 18 * Math.PI,
+			thetaStep: Math.PI / 180,
+		},
+		{// demo=5
+			curve: roseCurve,
+			scale: 100, k: 5, offset: -250,
+			morph: [["offset", 1, 250]],
+			morphDelay: 20,
+			thetaEnd: 2 * Math.PI,
+			thetaStep: Math.PI / 180,
+		},
+		{// demo=6
+			curve: roseCurve,
+			scale: 200, k: Math.PI-1, offset: 0,
+			morph: [["scale", 140/200, 340], ["k", 2/200, Math.PI+1]],
+			morphDelay: 200,
+			thetaEnd: 32 * Math.PI,
+			thetaStep: Math.PI / 180,
+		},
+		{// demo=7
+			curve: spiral,
+			b: 10,
+			morph: [["numPoints", 2, 280], ["thetaStep", 0, 0]],
+			morphDelay: 200,
+			numPoints: 20,
+			thetaEnd: 16 * Math.PI,
+		},
+		{// demo=8
+			curve: spiral,
+			b: 6,
+			morph: [["thetaStep", Math.PI/360, Math.PI/2]],
+			morphDelay: 100,
+			numPoints: 80,
+			thetaStep: Math.PI/360,
+		},
 	];
 	return configs[i < configs.length ? i : 0];
 }
@@ -388,10 +459,10 @@ function main()
 
 	if (config.demo)
 		config = predefinedConfig(config.demo - 1);
-	else
-		config = (config.curve || roseCurve)(config);
+	if (!config.curve)
+		config.curve = roseCurve;
 
-	const {numPoints, angle, radius} = config;
+	const {numPoints, angle, radius} = config.curve(config);
 	const data = Array.from({length: numPoints}, (v, i) => [angle(i), radius(i)]);
 
 	const svg = createSvg(900, 680);
@@ -413,6 +484,8 @@ function main()
 		update();
 	} else {
 		path.attr("d", d3line(data));
+		if (config.morph)
+			morph(config, path, d3line);
 	}
 
 	if (config.derivative && config.animateTangent) {
@@ -530,6 +603,36 @@ window.addEventListener("DOMContentLoaded", main);
 <td>pi/12 - 32pi</td>
 <td><a href="https://en.wikipedia.org/wiki/Lituus_(mathematics)">Lituus</a></td>
 </tr>
+<tr><th colspan="4">Morph Demos</th></tr>
+<tr>
+<td colspan="4">
+<a href="polar.html?demo=3">3</a>,
+<a href="polar.html?demo=4">4</a>,
+<a href="polar.html?demo=5">5</a>,
+<a href="polar.html?demo=6">6</a>,
+<a href="polar.html?demo=7">7</a>,
+<a href="polar.html?demo=8">8</a>
+</td>
+</tr>
 </table>
+<svg width="0" height="0">
+<defs>
+<radialGradient id="gradient1">
+	<stop   offset="0.0%" stop-color="#2c7bb6" />
+	<stop  offset="12.5%" stop-color="#00a6ca" />
+	<stop  offset="25.0%" stop-color="#00ccbc" />
+	<stop  offset="37.5%" stop-color="#90eb9d" />
+	<stop  offset="50.0%" stop-color="#ffff8c" />
+	<stop  offset="62.5%" stop-color="#f9d057" />
+	<stop  offset="75.0%" stop-color="#f29e2e" />
+	<stop  offset="87.5%" stop-color="#e76818" />
+	<stop offset="100.0%" stop-color="#d7191c" />
+</radialGradient>
+<radialGradient id="gradient2" r="25%" spreadMethod="reflect">
+	<stop   offset="0%" stop-color="gold" />
+	<stop offset="100%" stop-color="red" />
+</radialGradient>
+</defs>
+</svg>
 </body>
 </html>
