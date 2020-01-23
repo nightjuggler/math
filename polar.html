@@ -5,10 +5,28 @@
 <title>Polar Curve Explorer</title>
 <script src="https://d3js.org/d3.v5.min.js"></script>
 <style>
+a {
+	text-decoration: none;
+}
 body {
 	background-color: white;
 	font-family: verdana;
 	font-size: 10pt;
+}
+table {
+	border: 1px solid black;
+	border-spacing: 0;
+	margin-left: auto;
+	margin-right: auto;
+	margin-top: 2px;
+}
+td,th {
+	border: 1px solid black;
+	padding: 2px 4px 2px 4px;
+	vertical-align: top;
+}
+th {
+	background-color: rgb(220,220,220);
 }
 #graph {
 	text-align: center;
@@ -16,7 +34,7 @@ body {
 #graph div {
 	padding-bottom: 2px;
 }
-svg {
+#graph svg {
 	border: 1px solid black;
 	margin-top: 2px;
 }
@@ -33,7 +51,7 @@ circle {
 	stroke-opacity: 0.3;
 	stroke-width: 1;
 }
-.line {
+.curve {
 	fill: none;
 	stroke: magenta;
 	stroke-width: 2;
@@ -51,6 +69,11 @@ circle {
 /* globals d3, document, setTimeout, window */
 (function() {
 "use strict";
+const mathConstants = {
+	e: Math.E,
+	phi: (1 + Math.sqrt(5)) / 2,
+	pi: Math.PI,
+};
 function createSvg(width, height)
 {
 	const centerX = Math.floor(width / 2);
@@ -78,6 +101,46 @@ function createSvg(width, height)
 
 	return svg;
 }
+function parseAnimate(q, v, propName)
+{
+	const m = v.match(/^([1-9][0-9]{0,2})?,([1-9][0-9]{1,3})?$/);
+	if (m === null) return;
+	const [, step, delay] = m;
+	const animate = {};
+	if (step) animate.step = parseInt(step, 10);
+	if (delay) animate.delay = parseInt(delay, 10);
+	q[propName] = animate;
+}
+function parseDemo(q, v)
+{
+	if (v.match(/^[1-9][0-9]?$/) !== null)
+		q.demo = parseInt(v, 10);
+}
+function parseExpr(q, v, propName)
+{
+	if (v === "") return;
+	const m = v.match(/^(-?(?:[1-9][0-9]*|0)(?:\.[0-9]+)?)?(e|phi|pi)?(?:\/([1-9][0-9]*))?$/);
+	if (m === null) return;
+	const [, a, b, c] = m;
+	if (!(a || b)) return;
+	v = a ? Number(a) : 1;
+	if (b) v *= mathConstants[b];
+	if (c) v /= Number(c);
+	q[propName] = v;
+}
+function parseExprList(q, v, propList)
+{
+	const values = v.split(",");
+	const numValues = values.length > propList.length ? propList.length : values.length;
+
+	for (let i = 0; i < numValues; i += 1)
+		parseExpr(q, values[i], propList[i]);
+}
+function parsePoints(q, v)
+{
+	if (v.match(/^[1-9][0-9]{0,5}$/) !== null)
+		q.numPoints = parseInt(v, 10);
+}
 function isValidId(s, n)
 {
 	return s.length <= n && s.match(/^[a-z][_0-9a-z]*$/) !== null;
@@ -102,7 +165,7 @@ function parseQueryString(params, handlers, flags)
 		const k = s.substr(0, i);
 		const v = s.substr(i + 1);
 
-		if (isValidId(k, 6) && handlers[k])
+		if (isValidId(k, 12) && handlers[k])
 			handlers[k](params, v);
 	}
 }
@@ -173,7 +236,7 @@ function setAngle(config)
 		if (!(typeof thetaStep === "number" && thetaStep > 0))
 			thetaStep = Math.PI / 180; // 1 degree;
 		if (!(typeof numPoints === "number" && numPoints > 1))
-			numPoints = 360 + 1;
+			numPoints = 12*360 + 1;
 	}
 
 	const thetaAdjust = Math.PI / 2 - thetaStart;
@@ -232,7 +295,7 @@ function logSpiral(config)
 	};
 	return config;
 }
-function roseCurve(config) // See https://en.wikipedia.org/wiki/Rose_(mathematics)
+function roseCurve(config)
 {
 	const theta = setAngle(config);
 
@@ -275,95 +338,58 @@ function spiral(config)
 	}
 	return config;
 }
+function predefinedConfig(i)
+{
+	const growthFactor = mathConstants.phi;
+	const growthAngle = 2 * Math.PI;
+	const configs = [
+		logSpiral({
+			slopeAngle: Math.atan2(Math.log(growthFactor), growthAngle),
+			growthAngle: growthAngle,
+			thetaEnd: 8 * Math.PI,
+		}),
+		logSpiral({
+			tangentAngle: Math.PI / 2 - Math.atan2(Math.log(growthFactor), growthAngle),
+			growthAngle: growthAngle,
+			thetaEnd: 8 * Math.PI,
+		}),
+	];
+	return configs[i < configs.length ? i : 0];
+}
 function main()
 {
-	const q = {};
-	parseQueryString(q, {}, {});
+	let config = {};
+	parseQueryString(config, {
+		anim: function(q, v) {
+			parseAnimate(q, v, "animate");
+		},
+		animtan: function(q, v) {
+			parseAnimate(q, v, "animateTangent");
+		},
+		demo: parseDemo,
+		logspiral: function(q, v) {
+			q.curve = logSpiral;
+			parseExprList(q, v, ["initialRadius", "slopeAngle", "tangentAngle",
+				"growthFactor", "growthAngle"]);
+		},
+		points: parsePoints,
+		rose: function(q, v) {
+			q.curve = roseCurve;
+			parseExprList(q, v, ["scale", "k", "offset"]);
+		},
+		spiral: function(q, v) {
+			q.curve = spiral;
+			parseExprList(q, v, ["a", "b", "c"]);
+		},
+		theta: function(q, v) {
+			parseExprList(q, v, ["thetaStart", "thetaEnd", "thetaStep"]);
+		},
+	}, {});
 
-	const goldenRatio = (1 + Math.sqrt(5)) / 2;
-	const goldenSpiralGrowthAngle = Math.PI / 2;
-	const spiralGrowthAngle = 2 * Math.PI;
-	const numRotations = 4;
-	const thetaEnd = numRotations * 2 * Math.PI;
-
-	const config = [
-		logSpiral({
-			thetaEnd: thetaEnd,
-			growthFactor: goldenRatio,
-			growthAngle: spiralGrowthAngle,
-			animateTangent: {},
-		}),
-		logSpiral({
-			thetaEnd: thetaEnd,
-			slopeAngle: Math.atan2(Math.log(goldenRatio), spiralGrowthAngle),
-			growthFactor: goldenRatio,
-			growthAngle: spiralGrowthAngle,
-			animateTangent: {},
-		}),
-		logSpiral({
-			thetaEnd: thetaEnd,
-			tangentAngle: Math.PI / 2 - Math.atan2(Math.log(goldenRatio), spiralGrowthAngle),
-			growthFactor: goldenRatio,
-			growthAngle: spiralGrowthAngle,
-			animateTangent: {},
-		}),
-		logSpiral({
-			thetaEnd: thetaEnd,
-			slopeAngle: 6 * Math.PI / 180,
-			animateTangent: {},
-		}),
-		logSpiral({
-			thetaEnd: thetaEnd,
-			tangentAngle: 84 * Math.PI / 180,
-			animateTangent: {},
-		}),
-		roseCurve({
-			k: 4 / 9,
-			thetaEnd: 32 * Math.PI,
-			thetaStep: 0.5 * Math.PI / 180,
-		}),
-		roseCurve({
-			k: 5,
-			offset: 60,
-			thetaEnd: 32 * Math.PI,
-			thetaStep: 0.5 * Math.PI / 180,
-		}),
-		roseCurve({
-			k: Math.PI,
-			thetaEnd: 32 * Math.PI,
-			thetaStep: 0.5 * Math.PI / 180,
-			animate: {step: 16, delay: 20},
-		}),
-		roseCurve({
-			k: Math.E,
-			thetaEnd: 32 * Math.PI,
-			thetaStep: 0.5 * Math.PI / 180,
-			animate: {step: 16, delay: 20},
-		}),
-		roseCurve({
-			scale: 200, k: 1, offset: 100, // Limacon: r = 200 * (0.5 + cos(theta))
-			thetaEnd: 2 * Math.PI,
-			thetaStep: 0.5 * Math.PI / 180,
-		}),
-		spiral({
-			thetaEnd: thetaEnd,
-		}),
-		spiral({
-			thetaEnd: 16 * Math.PI,
-			b: 40, c: 2, // Fermat's spiral
-			animateTangent: {delay: 50},
-		}),
-		spiral({
-			thetaStart: Math.PI / 4,
-			thetaEnd: 16 * Math.PI,
-			b: 400, c: -1, // Hyperbolic spiral
-		}),
-		spiral({
-			thetaStart: Math.PI / 12,
-			thetaEnd: 32 * Math.PI,
-			b: 240, c: -2, // Lituus
-		}),
-	][7];
+	if (config.demo)
+		config = predefinedConfig(config.demo - 1);
+	else
+		config = (config.curve || roseCurve)(config);
 
 	const {numPoints, angle, radius} = config;
 	const data = Array.from({length: numPoints}, (v, i) => [angle(i), radius(i)]);
@@ -373,7 +399,7 @@ function main()
 		config.grid(svg);
 
 	const d3line = d3.lineRadial();
-	const path = svg.append("path").attr("class", "line");
+	const path = svg.append("path").attr("class", "curve");
 
 	if (config.animate) {
 		let i = 0;
@@ -416,5 +442,94 @@ window.addEventListener("DOMContentLoaded", main);
 <div id="graph">
 <div id="textnode">&nbsp;</div>
 </div>
+<table>
+<tr><th colspan="4"><a href="https://en.wikipedia.org/wiki/Logarithmic_spiral">Logarithmic Spirals</a></th></tr>
+<tr>
+<td><a href="polar.html?logspiral=,,,phi,2pi&theta=,8pi">r = phi^(theta/(2pi))</a></td>
+<td><a href="polar.html?logspiral=,,,phi,2pi&theta=,8pi&anim=,">O</a>
+/   <a href="polar.html?logspiral=,,,phi,2pi&theta=,8pi&animtan=,">X</a></td>
+<td>0 - 8pi</td>
+<td>growthFactor = phi, growthAngle = 2pi</td>
+</tr>
+<tr>
+<td><a href="polar.html?logspiral=,6pi/180&theta=,8pi">r = e^(tan(6pi/180)*theta)</a></td>
+<td><a href="polar.html?logspiral=,6pi/180&theta=,8pi&anim=,">O</a>
+/   <a href="polar.html?logspiral=,6pi/180&theta=,8pi&animtan=,">X</a></td>
+<td>0 - 8pi</td>
+<td>slopeAngle = 6&deg;</td>
+</tr>
+<tr>
+<td><a href="polar.html?logspiral=,,84pi/180&theta=,8pi">r = e^(theta/tan(84pi/180))</a></td>
+<td><a href="polar.html?logspiral=,,84pi/180&theta=,8pi&anim=,">O</a>
+/   <a href="polar.html?logspiral=,,84pi/180&theta=,8pi&animtan=,">X</a></td>
+<td>0 - 8pi</td>
+<td>tangentAngle = 84&deg;</td>
+</tr>
+<tr><th colspan="4"><a href="https://en.wikipedia.org/wiki/Rose_(mathematics)">Roses</a></th></tr>
+<tr>
+<td><a href="polar.html?rose=,4/9&theta=,32pi,0.5pi/180">r = cos(4/9*theta)</a></td>
+<td><a href="polar.html?rose=,4/9&theta=,32pi,0.5pi/180&anim=32,">O</a>
+/   <a href="polar.html?rose=,4/9&theta=,32pi,0.5pi/180&animtan=,">X</a></td>
+<td>0 - 32pi</td>
+<td>thetaStep = 0.5&deg;</td>
+</tr>
+<tr>
+<td><a href="polar.html?rose=,5,60&theta=,32pi,0.5pi/180">r = cos(5*theta) + 60</a></td>
+<td><a href="polar.html?rose=,5,60&theta=,32pi,0.5pi/180&anim=,">O</a>
+/   <a href="polar.html?rose=,5,60&theta=,32pi,0.5pi/180&animtan=,">X</a></td>
+<td>0 - 32pi</td>
+<td>thetaStep = 0.5&deg;</td>
+</tr>
+<tr>
+<td><a href="polar.html?rose=,pi&theta=,32pi,0.5pi/180">r = cos(pi*theta)</a></td>
+<td><a href="polar.html?rose=,pi&theta=,32pi,0.5pi/180&anim=16,20">O</a>
+/   <a href="polar.html?rose=,pi&theta=,32pi,0.5pi/180&animtan=,">X</a></td>
+<td>0 - 32pi</td>
+<td>thetaStep = 0.5&deg;</td>
+</tr>
+<tr>
+<td><a href="polar.html?rose=,e&theta=,32pi,0.5pi/180">r = cos(e*theta)</a></td>
+<td><a href="polar.html?rose=,e&theta=,32pi,0.5pi/180&anim=16,20">O</a>
+/   <a href="polar.html?rose=,e&theta=,32pi,0.5pi/180&animtan=,">X</a></td>
+<td>0 - 32pi</td>
+<td>thetaStep = 0.5&deg;</td>
+</tr>
+<tr>
+<td><a href="polar.html?rose=200,1,100&theta=,2pi">r = 200*cos(theta) + 100</a></td>
+<td><a href="polar.html?rose=200,1,100&theta=,2pi&anim=,">O</a>
+/   <a href="polar.html?rose=200,1,100&theta=,2pi&animtan=,">X</a></td>
+<td>0 - 2pi</td>
+<td><a href="https://en.wikipedia.org/wiki/Lima%C3%A7on">Lima&ccedil;on</a></td>
+</tr>
+<tr><th colspan="4"><a href="https://en.wikipedia.org/wiki/Archimedean_spiral">Archimedean Spirals</a></th></tr>
+<tr>
+<td><a href="polar.html?spiral=,12&theta=,8pi">r = 12*theta</a></td>
+<td><a href="polar.html?spiral=,12&theta=,8pi&anim=,">O</a>
+/   <a href="polar.html?spiral=,12&theta=,8pi&animtan=,">X</a></td>
+<td>0 - 8pi</td>
+<td>&nbsp;</td>
+</tr>
+<tr>
+<td><a href="polar.html?spiral=,40,2&theta=,16pi">r = 40*sqrt(theta)</a></td>
+<td><a href="polar.html?spiral=,40,2&theta=,16pi&anim=,">O</a>
+/   <a href="polar.html?spiral=,40,2&theta=,16pi&animtan=,50">X</a></td>
+<td>0 - 16pi</td>
+<td><a href="https://en.wikipedia.org/wiki/Fermat's_spiral">Fermat's spiral</a></td>
+</tr>
+<tr>
+<td><a href="polar.html?spiral=,400,-1&theta=pi/4,16pi">r = 400/theta</a></td>
+<td><a href="polar.html?spiral=,400,-1&theta=pi/4,16pi&anim=,">O</a>
+/   <a href="polar.html?spiral=,400,-1&theta=pi/4,16pi&animtan=,">X</a></td>
+<td>pi/4 - 16pi</td>
+<td><a href="https://en.wikipedia.org/wiki/Hyperbolic_spiral">Hyperbolic spiral</a></td>
+</tr>
+<tr>
+<td><a href="polar.html?spiral=,240,-2&theta=pi/12,32pi">r = 240/sqrt(theta)</a></td>
+<td><a href="polar.html?spiral=,240,-2&theta=pi/12,32pi&anim=,">O</a>
+/   <a href="polar.html?spiral=,240,-2&theta=pi/12,32pi&animtan=,">X</a></td>
+<td>pi/12 - 32pi</td>
+<td><a href="https://en.wikipedia.org/wiki/Lituus_(mathematics)">Lituus</a></td>
+</tr>
+</table>
 </body>
 </html>
