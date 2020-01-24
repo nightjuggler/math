@@ -38,15 +38,8 @@ th {
 	border: 1px solid black;
 	margin-top: 2px;
 }
-circle {
-	fill: none;
-	stroke: black;
-	stroke-opacity: 0.3;
-	stroke-width: 1;
-}
 .axis {
-	font-family: verdana;
-	font-size: 10pt;
+	fill: none;
 	stroke: black;
 	stroke-opacity: 0.3;
 	stroke-width: 1;
@@ -64,9 +57,14 @@ circle {
 	stroke: blue;
 	stroke-width: 2;
 }
+.tangentAngle {
+	fill: none;
+	stroke: red;
+	stroke-width: 4;
+}
 </style>
 <script>
-/* globals d3, document, setTimeout, window */
+/* globals d3, document, window, clearTimeout, setTimeout */
 (function() {
 "use strict";
 const mathConstants = {
@@ -74,6 +72,33 @@ const mathConstants = {
 	phi: (1 + Math.sqrt(5)) / 2,
 	pi: Math.PI,
 };
+var animation;
+function handleKeyDown(event)
+{
+	if (!animation) return true;
+
+	switch (event.key || event.keyIdentifier) {
+		case "ArrowRight":
+		case "Right":
+			if (animation.timeout !== null) return true;
+			animation.update(true);
+			break;
+		case "U+0020":
+		case " ":
+			if (animation.timeout !== null) {
+				clearTimeout(animation.timeout);
+				animation.timeout = null;
+			} else
+				animation.update();
+			break;
+		default:
+			return true;
+	}
+
+	event.preventDefault();
+	event.stopPropagation();
+	return false;
+}
 function createSvg(width, height)
 {
 	const centerX = Math.floor(width / 2);
@@ -169,7 +194,7 @@ function parseQueryString(params, handlers, flags)
 			handlers[k](params, v);
 	}
 }
-function updateTangent(i, config, tangent, radial, textNode)
+function updateTangent(i, config, tangent, radial, tangentAngle, textNode)
 {
 /*
 	The slope m of the line tangent to the curve r = f(t) at point (r, t) is
@@ -199,6 +224,25 @@ function updateTangent(i, config, tangent, radial, textNode)
 
 	tangent.attr("x1", x + dx).attr("y1", -(y + dy)).attr("x2", x - dx).attr("y2", -(y - dy));
 	radial.attr("x2", x).attr("y2", -y);
+
+	if (r > 20) {
+		const arcRadius = 20;
+		const arcX1 = (r - arcRadius) * cos;
+		const arcY1 = (r - arcRadius) * sin;
+		let arcDx = arcRadius / Math.sqrt(1 + m * m);
+		let arcDy = m * arcDx;
+
+		if (m > 0 ? drdt < 0 ? sin <= 0 : cos > 0 : drdt < 0 ? cos <= 0 : sin <= 0) {
+			arcDy = -arcDy;
+			arcDx = -arcDx;
+		}
+
+		tangentAngle.attr("d", [
+			"M", arcX1, -arcY1,
+			"A", arcRadius, arcRadius, 0, 0, 0, x + arcDx, -(y + arcDy),
+		].join(" "));
+	} else
+		tangentAngle.attr("d", "");
 /*
 	The tangent of the tangent angle psi of the curve r = f(t) at point (r, t) is
 
@@ -289,6 +333,7 @@ function logSpiral(config)
 	config.grid = function(svg) {
 		for (let i = 0; i < 6; i += 1)
 			svg.append("circle")
+				.attr("class", "axis")
 				.attr("cx", 0)
 				.attr("cy", 0)
 				.attr("r", initialRadius * Math.pow(growthFactor, i));
@@ -313,6 +358,7 @@ function roseCurve(config)
 
 	config.grid = function(svg) {
 		svg.append("circle")
+			.attr("class", "axis")
 			.attr("cx", 0)
 			.attr("cy", 0)
 			.attr("r", scale);
@@ -491,19 +537,24 @@ function main()
 	if (config.derivative && config.animateTangent) {
 		const tangent = svg.append("line").attr("class", "tangent");
 		const radial = svg.append("line").attr("class", "radial");
+		const tangentAngle = svg.append("path").attr("class", "tangentAngle");
 		const textNode = document.getElementById("textnode").firstChild;
+		document.addEventListener("keydown", handleKeyDown);
 
 		let i = 0;
 		const n = numPoints - 1;
 		const {step = 4, delay = 100} = config.animateTangent;
-		const update = function() {
-			updateTangent(i, config, tangent, radial, textNode);
+		const update = function(oneFrame) {
+			updateTangent(i, config, tangent, radial, tangentAngle, textNode);
 			if (i < n) {
 				i += step;
 				if (i > n) i = n;
-				setTimeout(update, delay);
-			}
+				if (!oneFrame)
+					animation.timeout = setTimeout(update, delay);
+			} else
+				animation = null;
 		};
+		animation = {update: update};
 		update();
 	}
 }
