@@ -78,6 +78,11 @@ function handleKeyDown(event)
 	if (!animation) return true;
 
 	switch (event.key || event.keyIdentifier) {
+		case "ArrowLeft":
+		case "Left":
+			if (animation.timeout !== null) return true;
+			animation.update(true, true);
+			break;
 		case "ArrowRight":
 		case "Right":
 			if (animation.timeout !== null) return true;
@@ -98,6 +103,17 @@ function handleKeyDown(event)
 	event.preventDefault();
 	event.stopPropagation();
 	return false;
+}
+function animationBegin(update)
+{
+	document.addEventListener("keydown", handleKeyDown);
+	animation = {update: update};
+	update(false, true);
+}
+function animationEnd()
+{
+	document.removeEventListener("keydown", handleKeyDown);
+	animation = null;
 }
 function createSvg(width, height)
 {
@@ -388,10 +404,19 @@ function morph(config, path, d3line)
 {
 	const props = config.morph;
 	const delay = config.morphDelay || 100;
-	const update = function() {
-		let done = true;
-		for (const [prop, step, maxValue] of props)
-			if (config[prop] + step < maxValue) {
+
+	for (const [prop, minValue] of props)
+		config[prop] = minValue;
+
+	const update = function(oneFrame, reverse) {
+		let done = !oneFrame && !reverse;
+		for (const [prop, minValue, maxValue, step] of props)
+			if (reverse) {
+				if (config[prop] - step > minValue)
+					config[prop] -= step;
+				else
+					config[prop] = minValue;
+			} else if (config[prop] + step < maxValue) {
 				done = false;
 				config[prop] += step;
 			} else
@@ -400,10 +425,12 @@ function morph(config, path, d3line)
 		const {numPoints, angle, radius} = config.curve(config);
 		const data = Array.from({length: numPoints}, (v, i) => [angle(i), radius(i)]);
 		path.attr("d", d3line(data));
-		if (!done)
-			setTimeout(update, delay);
+		if (done)
+			animationEnd();
+		else if (!oneFrame)
+			animation.timeout = setTimeout(update, delay);
 	};
-	setTimeout(update, delay);
+	animationBegin(update);
 }
 function predefinedConfig(i)
 {
@@ -424,32 +451,38 @@ function predefinedConfig(i)
 		},
 		{// demo=3
 			curve: roseCurve,
-			scale: 100, k: Math.E, offset: -100,
-			morph: [["scale", 1, 300], ["k", 0.01, Math.E + 2], ["offset", 1, 100]],
+			morph: [
+				["scale", 100, 300, 1],
+				["k", Math.E, Math.E + 2, 0.01],
+				["offset", -100, 100, 1],
+			],
 			morphDelay: 100,
 			thetaEnd: 32 * Math.PI,
 			thetaStep: Math.PI / 180,
 		},
 		{// demo=4
 			curve: roseCurve,
-			scale: 100, k: 4/9, offset: -220,
-			morph: [["offset", 1, 220]],
+			scale: 100, k: 4/9,
+			morph: [["offset", -220, 220, 1]],
 			morphDelay: 20,
 			thetaEnd: 18 * Math.PI,
 			thetaStep: Math.PI / 180,
 		},
 		{// demo=5
 			curve: roseCurve,
-			scale: 100, k: 5, offset: -250,
-			morph: [["offset", 1, 250]],
+			scale: 100, k: 5,
+			morph: [["offset", -250, 250, 1]],
 			morphDelay: 20,
 			thetaEnd: 2 * Math.PI,
 			thetaStep: Math.PI / 180,
 		},
 		{// demo=6
 			curve: roseCurve,
-			scale: 200, k: Math.PI-1, offset: 0,
-			morph: [["scale", 140/200, 340], ["k", 2/200, Math.PI+1]],
+			offset: 0,
+			morph: [
+				["scale", 200, 340, 140/200],
+				["k", Math.PI - 1, Math.PI + 1, 2/200],
+			],
 			morphDelay: 200,
 			thetaEnd: 32 * Math.PI,
 			thetaStep: Math.PI / 180,
@@ -457,18 +490,16 @@ function predefinedConfig(i)
 		{// demo=7
 			curve: spiral,
 			b: 10,
-			morph: [["numPoints", 2, 280], ["thetaStep", 0, 0]],
+			morph: [["numPoints", 20, 280, 2], ["thetaStep", 0, 0, 64]],
 			morphDelay: 200,
-			numPoints: 20,
 			thetaEnd: 16 * Math.PI,
 		},
 		{// demo=8
 			curve: spiral,
 			b: 6,
-			morph: [["thetaStep", Math.PI/360, Math.PI/2]],
+			morph: [["thetaStep", Math.PI/360, Math.PI/2, Math.PI/360]],
 			morphDelay: 100,
 			numPoints: 80,
-			thetaStep: Math.PI/360,
 		},
 	];
 	return configs[i < configs.length ? i : 0];
@@ -518,7 +549,9 @@ function main()
 	const d3line = d3.lineRadial();
 	const path = svg.append("path").attr("class", "curve");
 
-	if (config.animate) {
+	if (config.morph)
+		morph(config, path, d3line);
+	else if (config.animate) {
 		let i = 0;
 		const {step = 8, delay = 50} = config.animate;
 		const update = function() {
@@ -528,34 +561,34 @@ function main()
 				setTimeout(update, delay);
 		};
 		update();
-	} else {
+	} else
 		path.attr("d", d3line(data));
-		if (config.morph)
-			morph(config, path, d3line);
-	}
 
-	if (config.derivative && config.animateTangent) {
+	if (config.derivative && config.animateTangent && !config.morph) {
 		const tangent = svg.append("line").attr("class", "tangent");
 		const radial = svg.append("line").attr("class", "radial");
 		const tangentAngle = svg.append("path").attr("class", "tangentAngle");
 		const textNode = document.getElementById("textnode").firstChild;
-		document.addEventListener("keydown", handleKeyDown);
 
 		let i = 0;
 		const n = numPoints - 1;
 		const {step = 4, delay = 100} = config.animateTangent;
-		const update = function(oneFrame) {
-			updateTangent(i, config, tangent, radial, tangentAngle, textNode);
-			if (i < n) {
-				i += step;
-				if (i > n) i = n;
-				if (!oneFrame)
-					animation.timeout = setTimeout(update, delay);
+		const update = function(oneFrame, reverse) {
+			let done = false;
+			if (reverse) {
+				if (i - step > 0) i -= step; else i = 0;
 			} else
-				animation = null;
+				if (i + step < n) i += step;
+			else {
+				i = n; if (!oneFrame && !reverse) done = true;
+			}
+			updateTangent(i, config, tangent, radial, tangentAngle, textNode);
+			if (done)
+				animationEnd();
+			else if (!oneFrame)
+				animation.timeout = setTimeout(update, delay);
 		};
-		animation = {update: update};
-		update();
+		animationBegin(update);
 	}
 }
 window.addEventListener("DOMContentLoaded", main);
