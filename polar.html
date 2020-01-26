@@ -3,7 +3,6 @@
 <head>
 <meta charset="utf-8">
 <title>Polar Curve Explorer</title>
-<script src="https://d3js.org/d3.v5.min.js"></script>
 <style>
 a {
 	text-decoration: none;
@@ -64,7 +63,7 @@ th {
 }
 </style>
 <script>
-/* globals d3, document, window, clearTimeout, setTimeout */
+/* globals document, window, clearTimeout, setTimeout */
 (function() {
 "use strict";
 const mathConstants = {
@@ -115,30 +114,31 @@ function animationEnd()
 	document.removeEventListener("keydown", handleKeyDown);
 	animation = null;
 }
+function createSvgElem(tagName, attributes)
+{
+	const svgNS = "http://www.w3.org/2000/svg";
+	const element = document.createElementNS(svgNS, tagName);
+
+	for (const [name, value] of attributes)
+		element.setAttribute(name, value);
+
+	return element;
+}
 function createSvg(width, height)
 {
 	const centerX = Math.floor(width / 2);
 	const centerY = Math.floor(height / 2);
 
-	const svg = d3.select("#graph")
-		.append("svg")
-			.attr("width", width)
-			.attr("height", height)
-		.append("g")
-			.attr("transform", "translate(" + centerX + "," + centerY + ")");
+	const svg = document.getElementById("graph")
+		.appendChild(createSvgElem("svg", [["width", width], ["height", height]]))
+		.appendChild(createSvgElem("g", [["transform", "translate(" + centerX + "," + centerY + ")"]]));
 
-	svg.append("line")
-		.attr("class", "axis")
-		.attr("x1", 0)
-		.attr("y1", centerY)
-		.attr("x2", 0)
-		.attr("y2", -centerY);
-	svg.append("line")
-		.attr("class", "axis")
-		.attr("x1", -centerX)
-		.attr("y1", 0)
-		.attr("x2", centerX)
-		.attr("y2", 0);
+	svg.appendChild(createSvgElem("line", [["class", "axis"],
+		["x1", 0], ["y1", centerY],
+		["x2", 0], ["y2", -centerY]]));
+	svg.appendChild(createSvgElem("line", [["class", "axis"],
+		["x1", -centerX], ["y1", 0],
+		["x2", centerX], ["y2", 0]]));
 
 	return svg;
 }
@@ -230,6 +230,12 @@ function parseQueryString(params, handlers, flags)
 			handlers[k](params, v);
 	}
 }
+function setRadialPath(path, data)
+{
+	path.setAttribute("d", Array.from(data, ([t, r], i) => (i === 0 ? "M" : "L") +
+		( r * Math.cos(t)).toFixed(4) + "," +
+		(-r * Math.sin(t)).toFixed(4)).join(""));
+}
 function updateTangent(i, config, tangent, radial, tangentAngle, textNode)
 {
 /*
@@ -256,29 +262,33 @@ function updateTangent(i, config, tangent, radial, tangentAngle, textNode)
 */
 	const h = 200;
 	const dx = h / Math.sqrt(1 + m * m);
-	const dy = m * dx;
+	const dy = dx === 0 ? h : m * dx;
 
-	tangent.attr("x1", x + dx).attr("y1", -(y + dy)).attr("x2", x - dx).attr("y2", -(y - dy));
-	radial.attr("x2", x).attr("y2", -y);
+	tangent.setAttribute("x1", x + dx);
+	tangent.setAttribute("y1", -(y + dy));
+	tangent.setAttribute("x2", x - dx);
+	tangent.setAttribute("y2", -(y - dy));
+	radial.setAttribute("x2", x);
+	radial.setAttribute("y2", -y);
 
-	if (r > 20) {
-		const arcRadius = 20;
+	const arcRadius = 20;
+	if (r > arcRadius) {
 		const arcX1 = (r - arcRadius) * cos;
 		const arcY1 = (r - arcRadius) * sin;
 		let arcDx = arcRadius / Math.sqrt(1 + m * m);
-		let arcDy = m * arcDx;
+		let arcDy = arcDx === 0 ? arcRadius : m * arcDx;
 
 		if (m > 0 ? drdt < 0 ? sin <= 0 : cos > 0 : drdt < 0 ? cos <= 0 : sin <= 0) {
 			arcDy = -arcDy;
 			arcDx = -arcDx;
 		}
 
-		tangentAngle.attr("d", [
+		tangentAngle.setAttribute("d", [
 			"M", arcX1, -arcY1,
 			"A", arcRadius, arcRadius, 0, 0, 0, x + arcDx, -(y + arcDy),
 		].join(" "));
 	} else
-		tangentAngle.attr("d", "");
+		tangentAngle.setAttribute("d", "");
 /*
 	The tangent of the tangent angle psi of the curve r = f(t) at point (r, t) is
 
@@ -319,10 +329,7 @@ function setAngle(config)
 			numPoints = 12*360 + 1;
 	}
 
-	const thetaAdjust = Math.PI / 2 - thetaStart;
-	config.angle = i => thetaAdjust - i * thetaStep;
 	config.theta = i => thetaStart + i * thetaStep;
-
 	config.thetaStart = thetaStart;
 	config.thetaStep = thetaStep;
 	config.numPoints = numPoints;
@@ -368,11 +375,8 @@ function logSpiral(config)
 
 	config.grid = function(svg) {
 		for (let i = 0; i < 6; i += 1)
-			svg.append("circle")
-				.attr("class", "axis")
-				.attr("cx", 0)
-				.attr("cy", 0)
-				.attr("r", initialRadius * Math.pow(growthFactor, i));
+			svg.appendChild(createSvgElem("circle", [["class", "axis"], ["cx", 0], ["cy", 0],
+				["r", initialRadius * Math.pow(growthFactor, i)]]));
 	};
 	return config;
 }
@@ -393,11 +397,7 @@ function roseCurve(config)
 	config.derivative = i => scale * k * -Math.sin(k * theta(i));
 
 	config.grid = function(svg) {
-		svg.append("circle")
-			.attr("class", "axis")
-			.attr("cx", 0)
-			.attr("cy", 0)
-			.attr("r", scale);
+		svg.appendChild(createSvgElem("circle", [["class", "axis"], ["cx", 0], ["cy", 0], ["r", scale]]));
 	};
 	return config;
 }
@@ -420,13 +420,15 @@ function spiral(config)
 	}
 	return config;
 }
-function morph(config, path, d3line)
+function morph(config, svg)
 {
 	const props = config.morph;
 	const delay = config.morphDelay || 100;
 
 	for (const [prop, minValue] of props)
 		config[prop] = minValue;
+
+	const path = svg.appendChild(createSvgElem("path", [["class", "curve"]]));
 
 	const update = function(oneFrame, reverse) {
 		let done = !oneFrame && !reverse;
@@ -442,9 +444,9 @@ function morph(config, path, d3line)
 			} else
 				config[prop] = maxValue;
 
-		const {numPoints, angle, radius} = config.curve(config);
-		const data = Array.from({length: numPoints}, (v, i) => [angle(i), radius(i)]);
-		path.attr("d", d3line(data));
+		const {numPoints, theta, radius} = config.curve(config);
+		const data = Array.from({length: numPoints}, (v, i) => [theta(i), radius(i)]);
+		setRadialPath(path, data);
 		if (done)
 			animationEnd();
 		else if (!oneFrame)
@@ -522,7 +524,7 @@ function predefinedConfig(i)
 			numPoints: 80,
 		},
 	];
-	return configs[i < configs.length ? i : 0];
+	return i >= 0 && i < configs.length ? configs[i] : {};
 }
 function main()
 {
@@ -560,35 +562,38 @@ function main()
 	if (!config.curve)
 		config.curve = roseCurve;
 
-	const {numPoints, angle, radius} = config.curve(config);
-	const data = Array.from({length: numPoints}, (v, i) => [angle(i), radius(i)]);
-
 	const svg = createSvg(900, 680);
+
+	if (config.morph) {
+		morph(config, svg);
+		return;
+	}
+
+	const {numPoints, theta, radius} = config.curve(config);
+	const data = Array.from({length: numPoints}, (v, i) => [theta(i), radius(i)]);
+
 	if (config.grid)
 		config.grid(svg);
 
-	const d3line = d3.lineRadial();
-	const path = svg.append("path").attr("class", "curve");
+	const path = svg.appendChild(createSvgElem("path", [["class", "curve"]]));
 
-	if (config.morph)
-		morph(config, path, d3line);
-	else if (config.animate) {
+	if (config.animate) {
 		let i = 0;
 		const {step = 8, delay = 50} = config.animate;
 		const update = function() {
 			i += step;
-			path.attr("d", d3line(data.slice(0, i)));
+			setRadialPath(path, data.slice(0, i));
 			if (i < numPoints)
 				setTimeout(update, delay);
 		};
 		update();
 	} else
-		path.attr("d", d3line(data));
+		setRadialPath(path, data);
 
-	if (config.derivative && config.animateTangent && !config.morph) {
-		const tangent = svg.append("line").attr("class", "tangent");
-		const radial = svg.append("line").attr("class", "radial");
-		const tangentAngle = svg.append("path").attr("class", "tangentAngle");
+	if (config.derivative && config.animateTangent) {
+		const tangent = svg.appendChild(createSvgElem("line", [["class", "tangent"]]));
+		const radial = svg.appendChild(createSvgElem("line", [["class", "radial"]]));
+		const tangentAngle = svg.appendChild(createSvgElem("path", [["class", "tangentAngle"]]));
 		const textNode = document.getElementById("textnode").firstChild;
 
 		let i = 0;
@@ -623,23 +628,23 @@ window.addEventListener("DOMContentLoaded", main);
 <table>
 <tr><th colspan="4"><a href="https://en.wikipedia.org/wiki/Logarithmic_spiral">Logarithmic Spirals</a></th></tr>
 <tr>
-<td><a href="polar.html?logspiral=,,,phi,2pi&theta=,8pi">r = 40*phi^(theta/(2pi))</a></td>
-<td><a href="polar.html?logspiral=,,,phi,2pi&theta=,8pi&anim=,">O</a>
-/   <a href="polar.html?logspiral=,,,phi,2pi&theta=,8pi&animtan=,">X</a></td>
+<td><a href="polar.html?logspiral=,,,phi,2pi&theta=,8pi&stroke=magenta,4">r = 40*phi^(theta/(2pi))</a></td>
+<td><a href="polar.html?logspiral=,,,phi,2pi&theta=,8pi&stroke=magenta,4&anim=,">O</a>
+/   <a href="polar.html?logspiral=,,,phi,2pi&theta=,8pi&stroke=magenta,4&animtan=,">X</a></td>
 <td>0 - 8pi</td>
 <td>growthFactor = phi, growthAngle = 2pi</td>
 </tr>
 <tr>
-<td><a href="polar.html?logspiral=,6pi/180&theta=,8pi">r = 40*e^(theta*tan(6pi/180))</a></td>
-<td><a href="polar.html?logspiral=,6pi/180&theta=,8pi&anim=,">O</a>
-/   <a href="polar.html?logspiral=,6pi/180&theta=,8pi&animtan=,">X</a></td>
+<td><a href="polar.html?logspiral=,6pi/180&theta=,8pi&stroke=,4">r = 40*e^(theta*tan(6pi/180))</a></td>
+<td><a href="polar.html?logspiral=,6pi/180&theta=,8pi&stroke=,4&anim=,">O</a>
+/   <a href="polar.html?logspiral=,6pi/180&theta=,8pi&stroke=,4&animtan=,">X</a></td>
 <td>0 - 8pi</td>
 <td>slopeAngle = 6&deg;</td>
 </tr>
 <tr>
-<td><a href="polar.html?logspiral=,,84pi/180&theta=,8pi">r = 40*e^(theta/tan(84pi/180))</a></td>
-<td><a href="polar.html?logspiral=,,84pi/180&theta=,8pi&anim=,">O</a>
-/   <a href="polar.html?logspiral=,,84pi/180&theta=,8pi&animtan=,">X</a></td>
+<td><a href="polar.html?logspiral=,,84pi/180&theta=,8pi&stroke=,4">r = 40*e^(theta/tan(84pi/180))</a></td>
+<td><a href="polar.html?logspiral=,,84pi/180&theta=,8pi&stroke=,4&anim=,">O</a>
+/   <a href="polar.html?logspiral=,,84pi/180&theta=,8pi&stroke=,4&animtan=,">X</a></td>
 <td>0 - 8pi</td>
 <td>tangentAngle = 84&deg;</td>
 </tr>
