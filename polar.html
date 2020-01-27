@@ -13,29 +13,35 @@ body {
 	font-size: 10pt;
 }
 table {
-	border: 1px solid black;
 	border-spacing: 0;
-	margin-left: auto;
-	margin-right: auto;
-	margin-top: 2px;
 }
 td,th {
-	border: 1px solid black;
 	padding: 2px 4px 2px 4px;
 	vertical-align: top;
 }
 th {
 	background-color: rgb(220,220,220);
 }
-#graph {
-	text-align: center;
+#examples {
+	border: 1px solid black;
 }
-#graph div {
-	padding-bottom: 2px;
+#examples td,
+#examples th {
+	border: 1px solid black;
+}
+#formulaParent {
+	text-align: center;
 }
 #graph svg {
 	border: 1px solid black;
-	margin-top: 2px;
+}
+#params {
+	width: 200px;
+}
+#params td:first-child {
+	padding-right: 0;
+	text-align: right;
+	width: 120px;
 }
 .axis {
 	fill: none;
@@ -71,6 +77,7 @@ const mathConstants = {
 	phi: (1 + Math.sqrt(5)) / 2,
 	pi: Math.PI,
 };
+const textNodes = {};
 var animation;
 function handleKeyDown(event)
 {
@@ -230,13 +237,73 @@ function parseQueryString(params, handlers, flags)
 			handlers[k](params, v);
 	}
 }
+function setTextNodes()
+{
+	for (const id of [
+		"formula",
+		"theta",
+		"radius",
+		"thetaStart",
+		"thetaEnd",
+		"thetaStep",
+		"numPoints",
+		"slopeAngle",
+		"tangentAngle",
+		"growthFactor",
+		"growthAngle",
+		])
+		textNodes[id] = document.getElementById(id).firstChild;
+}
+function removeTextRow(textNode)
+{
+	const tr = textNode.parentNode.parentNode.parentNode;
+	tr.parentNode.removeChild(tr);
+}
+function setFormula(formula)
+{
+	textNodes.formula.nodeValue = formula;
+}
+const regEx = /\.?0+$/;
+const toStr = n => Number.isInteger(n) ? n : n.toFixed(6).replace(regEx, "");
+const toStr2 = n => Number.isInteger(n) ? n : n.toFixed(2).replace(regEx, "");
+function logSpiralFormula1(a, b)
+{
+	return (a === 1 ? "" : toStr(a) + " * ") + "e ^ (theta * tan(" + toStr(b) + "))";
+}
+function logSpiralFormula2(a, b)
+{
+	return (a === 1 ? "" : toStr(a) + " * ") + "e ^ (theta / tan(" + toStr(b) + "))";
+}
+function logSpiralFormula3(a, b, c)
+{
+	return (a === 1 ? "" : toStr(a) + " * ") + toStr(b) + " ^ (theta / " + toStr(c) + ")";
+}
+function roseFormula(a, b, c)
+{
+	let formula = "";
+	if (a !== 1) formula += toStr(a) + " * ";
+	formula += "cos(";
+	if (b !== 1) formula += toStr(b) + " * ";
+	formula += "theta)";
+	if (c !== 0) formula += c < 0 ? " - " + toStr(-c) : " + " + toStr(c);
+	return formula;
+}
+function spiralFormula(a, b, c)
+{
+	let formula = "";
+	if (a !== 0) formula += toStr(a) + " + ";
+	if (b !== 1) formula += toStr(b) + " * ";
+	formula += "theta";
+	if (c !== 1) formula += " ^ (1 / " + toStr(c) + ")";
+	return formula;
+}
 function setRadialPath(path, data)
 {
 	path.setAttribute("d", Array.from(data, ([t, r], i) => (i === 0 ? "M" : "L") +
 		( r * Math.cos(t)).toFixed(4) + "," +
 		(-r * Math.sin(t)).toFixed(4)).join(""));
 }
-function updateTangent(i, config, tangent, radial, tangentAngle, textNode)
+function updateTangent(i, config, tangent, radial, arcPath)
 {
 /*
 	The slope m of the line tangent to the curve r = f(t) at point (r, t) is
@@ -247,8 +314,9 @@ function updateTangent(i, config, tangent, radial, tangentAngle, textNode)
 
 	const drdt = derivative(i);
 	const r = radius(i);
-	const sin = Math.sin(theta(i));
-	const cos = Math.cos(theta(i));
+	const t = theta(i);
+	const sin = Math.sin(t);
+	const cos = Math.cos(t);
 	const x = r * cos;
 	const y = r * sin;
 	const m = (drdt * sin + x) / (drdt * cos - y);
@@ -283,12 +351,12 @@ function updateTangent(i, config, tangent, radial, tangentAngle, textNode)
 			arcDx = -arcDx;
 		}
 
-		tangentAngle.setAttribute("d", [
+		arcPath.setAttribute("d", [
 			"M", arcX1, -arcY1,
 			"A", arcRadius, arcRadius, 0, 0, 0, x + arcDx, -(y + arcDy),
 		].join(" "));
 	} else
-		tangentAngle.setAttribute("d", "");
+		arcPath.setAttribute("d", "");
 /*
 	The tangent of the tangent angle psi of the curve r = f(t) at point (r, t) is
 
@@ -299,12 +367,13 @@ function updateTangent(i, config, tangent, radial, tangentAngle, textNode)
 
 	The slope angle of the curve at point (r, t) is pi/2 - psi
 */
-	if (textNode) {
-		const tangentAngle = Math.atan2(r, drdt) * 180 / Math.PI;
-		const slopeAngle = 90 - tangentAngle;
-		textNode.nodeValue = "slope angle = " + slopeAngle.toFixed(2) + " degrees, " +
-			"tangent angle = " + tangentAngle.toFixed(2) + " degrees";
-	}
+	const tangentAngle = Math.atan2(r, drdt) * 180 / Math.PI;
+	const slopeAngle = 90 - tangentAngle;
+
+	textNodes.theta.nodeValue = toStr2(t * 180 / Math.PI);
+	textNodes.radius.nodeValue = toStr2(r);
+	textNodes.slopeAngle.nodeValue = toStr2(slopeAngle);
+	textNodes.tangentAngle.nodeValue = toStr2(tangentAngle);
 }
 function setAngle(config)
 {
@@ -322,17 +391,21 @@ function setAngle(config)
 			thetaStep = Math.PI / 180; // 1 degree;
 			numPoints = (thetaEnd - thetaStart) / thetaStep + 1;
 		}
+		textNodes.thetaEnd.nodeValue = toStr2(thetaEnd * 180 / Math.PI) + "\u00B0";
 	} else {
 		if (!(typeof thetaStep === "number" && thetaStep > 0))
 			thetaStep = Math.PI / 180; // 1 degree;
 		if (!(typeof numPoints === "number" && numPoints > 1))
 			numPoints = 12*360 + 1;
+		textNodes.thetaEnd.nodeValue = "none";
 	}
 
 	config.theta = i => thetaStart + i * thetaStep;
-	config.thetaStart = thetaStart;
-	config.thetaStep = thetaStep;
 	config.numPoints = numPoints;
+
+	textNodes.thetaStart.nodeValue = toStr2(thetaStart * 180 / Math.PI);
+	textNodes.thetaStep.nodeValue = toStr2(thetaStep * 180 / Math.PI);
+	textNodes.numPoints.nodeValue = toStr2(numPoints);
 
 	return config.theta;
 }
@@ -356,7 +429,9 @@ function logSpiral(config)
 		const radius = i => initialRadius * Math.exp(k * theta(i));
 		config.radius = radius;
 		config.derivative = i => k * radius(i);
+		setFormula(logSpiralFormula1(initialRadius, slopeAngle));
 		growthFactor = Math.exp(k * growthAngle);
+		tangentAngle = Math.PI / 2 - slopeAngle;
 
 	} else if (typeof tangentAngle === "number" && tangentAngle !== 0) {
 
@@ -364,14 +439,24 @@ function logSpiral(config)
 		const radius = i => initialRadius * Math.exp(k * theta(i));
 		config.radius = radius;
 		config.derivative = i => k * radius(i);
+		setFormula(logSpiralFormula2(initialRadius, tangentAngle));
 		growthFactor = Math.exp(k * growthAngle);
+		slopeAngle = Math.PI / 2 - tangentAngle;
 
 	} else {
 		const k = Math.log(growthFactor) / growthAngle;
 		const radius = i => initialRadius * Math.pow(growthFactor, theta(i) / growthAngle);
 		config.radius = radius;
 		config.derivative = i => k * radius(i);
+		setFormula(logSpiralFormula3(initialRadius, growthFactor, growthAngle));
+		slopeAngle = Math.atan2(Math.log(growthFactor), growthAngle);
+		tangentAngle = Math.PI / 2 - slopeAngle;
 	}
+
+	textNodes.slopeAngle.nodeValue = toStr2(slopeAngle * 180 / Math.PI);
+	textNodes.tangentAngle.nodeValue = toStr2(tangentAngle * 180 / Math.PI);
+	textNodes.growthFactor.nodeValue = toStr(growthFactor);
+	textNodes.growthAngle.nodeValue = toStr2(growthAngle * 180 / Math.PI);
 
 	config.grid = function(svg) {
 		for (let i = 0; i < 6; i += 1)
@@ -395,6 +480,7 @@ function roseCurve(config)
 
 	config.radius = i => scale * Math.cos(k * theta(i)) + offset;
 	config.derivative = i => scale * k * -Math.sin(k * theta(i));
+	setFormula(roseFormula(scale, k, offset));
 
 	config.grid = function(svg) {
 		svg.appendChild(createSvgElem("circle", [["class", "axis"], ["cx", 0], ["cy", 0], ["r", scale]]));
@@ -418,6 +504,7 @@ function spiral(config)
 		config.radius = i => a + b * Math.pow(theta(i), 1 / c);
 		config.derivative = i => b * Math.pow(theta(i), 1 / c - 1) / c;
 	}
+	setFormula(spiralFormula(a, b, c));
 	return config;
 }
 function morph(config, svg)
@@ -512,7 +599,7 @@ function predefinedConfig(i)
 		{// demo=7
 			curve: spiral,
 			b: 10,
-			morph: [["numPoints", 20, 280, 2], ["thetaStep", 0, 0, 64]],
+			morph: [["numPoints", 20, 280, 2]],
 			morphDelay: 200,
 			thetaEnd: 16 * Math.PI,
 		},
@@ -528,6 +615,8 @@ function predefinedConfig(i)
 }
 function main()
 {
+	setTextNodes();
+
 	let config = {};
 	parseQueryString(config, {
 		anim: function(q, v) {
@@ -561,10 +650,20 @@ function main()
 		config = predefinedConfig(config.demo - 1);
 	if (!config.curve)
 		config.curve = roseCurve;
+	if (config.curve !== logSpiral) {
+		removeTextRow(textNodes.growthFactor);
+		removeTextRow(textNodes.growthAngle);
+	}
 
 	const svg = createSvg(900, 680);
 
 	if (config.morph) {
+		removeTextRow(textNodes.theta);
+		removeTextRow(textNodes.radius);
+		if (config.curve !== logSpiral) {
+			removeTextRow(textNodes.slopeAngle);
+			removeTextRow(textNodes.tangentAngle);
+		}
 		morph(config, svg);
 		return;
 	}
@@ -576,25 +675,36 @@ function main()
 		config.grid(svg);
 
 	const path = svg.appendChild(createSvgElem("path", [["class", "curve"]]));
+	const animateTangent = config.animateTangent && config.derivative;
 
 	if (config.animate) {
 		let i = 0;
 		const {step = 8, delay = 50} = config.animate;
 		const update = function() {
-			i += step;
-			setRadialPath(path, data.slice(0, i));
+			const dataSlice = data.slice(0, i += step);
+			setRadialPath(path, dataSlice);
+			if (!animateTangent) {
+				const [t, r] = dataSlice[dataSlice.length - 1];
+				textNodes.theta.nodeValue = toStr2(t * 180 / Math.PI);
+				textNodes.radius.nodeValue = toStr2(r);
+			}
 			if (i < numPoints)
 				setTimeout(update, delay);
 		};
 		update();
-	} else
+	} else {
 		setRadialPath(path, data);
+		if (!animateTangent) {
+			const [t, r] = data[numPoints - 1];
+			textNodes.theta.nodeValue = toStr2(t * 180 / Math.PI);
+			textNodes.radius.nodeValue = toStr2(r);
+		}
+	}
 
-	if (config.derivative && config.animateTangent) {
+	if (animateTangent) {
 		const tangent = svg.appendChild(createSvgElem("line", [["class", "tangent"]]));
 		const radial = svg.appendChild(createSvgElem("line", [["class", "radial"]]));
 		const tangentAngle = svg.appendChild(createSvgElem("path", [["class", "tangentAngle"]]));
-		const textNode = document.getElementById("textnode").firstChild;
 
 		let i = 0;
 		const n = numPoints - 1;
@@ -608,7 +718,7 @@ function main()
 			else {
 				i = n; if (!oneFrame && !reverse) done = true;
 			}
-			updateTangent(i, config, tangent, radial, tangentAngle, textNode);
+			updateTangent(i, config, tangent, radial, tangentAngle);
 			if (done)
 				animationEnd();
 			else if (!oneFrame)
@@ -616,16 +726,39 @@ function main()
 		};
 		animationBegin(update);
 	}
+	else if (config.curve !== logSpiral) {
+		removeTextRow(textNodes.slopeAngle);
+		removeTextRow(textNodes.tangentAngle);
+	}
 }
 window.addEventListener("DOMContentLoaded", main);
 })();
 </script>
 </head>
 <body>
-<div id="graph">
-<div id="textnode">&nbsp;</div>
-</div>
-<table>
+<table id="layout">
+<tr>
+<td>&nbsp;</td>
+<td id="formulaParent">radius = <span id="formula">&nbsp;</span></td>
+</tr>
+<tr>
+<td><table id="params">
+<tr><td>       theta =</td><td><span id="theta">&nbsp;</span>&deg;</td></tr>
+<tr><td>      radius =</td><td><span id="radius">&nbsp;</span></td></tr>
+<tr><td>  thetaStart =</td><td><span id="thetaStart">&nbsp;</span>&deg;</td></tr>
+<tr><td>    thetaEnd =</td><td><span id="thetaEnd">&nbsp;</span></td></tr>
+<tr><td>   thetaStep =</td><td><span id="thetaStep">&nbsp;</span>&deg;</td></tr>
+<tr><td>   numPoints =</td><td><span id="numPoints">&nbsp;</span></td></tr>
+<tr><td>  slopeAngle =</td><td><span id="slopeAngle">&nbsp;</span>&deg;</td></tr>
+<tr><td>tangentAngle =</td><td><span id="tangentAngle">&nbsp;</span>&deg;</td></tr>
+<tr><td>growthFactor =</td><td><span id="growthFactor">&nbsp;</span></td></tr>
+<tr><td> growthAngle =</td><td><span id="growthAngle">&nbsp;</span>&deg;</td></tr>
+</table></td>
+<td id="graph"></td>
+</tr>
+<tr>
+<td>&nbsp;</td>
+<td><table id="examples">
 <tr><th colspan="4"><a href="https://en.wikipedia.org/wiki/Logarithmic_spiral">Logarithmic Spirals</a></th></tr>
 <tr>
 <td><a href="polar.html?logspiral=,,,phi,2pi&theta=,8pi&stroke=magenta,4">r = 40*phi^(theta/(2pi))</a></td>
@@ -723,6 +856,8 @@ window.addEventListener("DOMContentLoaded", main);
 <a href="polar.html?demo=7">7</a>,
 <a href="polar.html?demo=8">8</a>
 </td>
+</tr>
+</table></td>
 </tr>
 </table>
 <svg width="0" height="0">
