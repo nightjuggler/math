@@ -362,11 +362,27 @@ function updateTangent(i, config, tangent, radial, arcPath)
 
 	m = dy/dx = ( (dr/dt)*sin(t) + r*cos(t) ) / ( (dr/dt)*cos(t) - r*sin(t) )
 */
-	const {derivative, radius, theta} = config;
+	const {theta, radius, derivative} = config;
+	const t = theta(i);
+	const r = radius(i);
+
+	if (Number.isNaN(r)) {
+		tangent.removeAttribute("x1");
+		tangent.removeAttribute("y1");
+		tangent.removeAttribute("x2");
+		tangent.removeAttribute("y2");
+		radial.removeAttribute("x2");
+		radial.removeAttribute("y2");
+		arcPath.removeAttribute("d");
+
+		textNodes.theta.nodeValue = toStr2(t * 180 / Math.PI);
+		textNodes.radius.nodeValue = "NaN";
+		textNodes.slopeAngle.nodeValue = "NaN";
+		textNodes.tangentAngle.nodeValue = "NaN";
+		return;
+	}
 
 	const drdt = derivative(i);
-	const r = radius(i);
-	const t = theta(i);
 	const sin = Math.sin(t);
 	const cos = Math.cos(t);
 	const x = r * cos;
