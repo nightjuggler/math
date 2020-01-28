@@ -13,6 +13,7 @@ body {
 	font-size: 10pt;
 }
 table {
+	border-collapse: collapse;
 	border-spacing: 0;
 }
 td,th {
@@ -55,18 +56,22 @@ th {
 	stroke-width: 2px;
 }
 .morph {
-	background-color: Lavender;
 	display: grid;
 	grid-template-columns: repeat(3, max-content);
 }
 .morph div:nth-child(3n+1) {
+	background-color: lavender;
 	padding-right: 3px;
 	text-align: right;
 }
 .morph div:nth-child(3n+2) {
+	background-color: lavender;
 	padding-left: 2px;
 	padding-right: 5px;
 	text-align: right;
+}
+.morph div:nth-child(3n) {
+	background-color: lavender;
 }
 .radial {
 	stroke: green;
@@ -231,7 +236,7 @@ function parseMorph(q, v)
 }
 function parsePoints(q, v)
 {
-	if (v.match(/^[1-9][0-9]{0,5}$/) !== null)
+	if (/^[1-9][0-9]{0,5}$/.test(v))
 		q.numPoints = parseInt(v, 10);
 }
 function parseStroke(q, v)
@@ -344,7 +349,9 @@ function spiralFormula(a, b, c)
 }
 function setRadialPath(path, data)
 {
-	path.setAttribute("d", Array.from(data, ([t, r], i) => (i === 0 ? "M" : "L") +
+	let m = true;
+	path.setAttribute("d", Array.from(data, ([t, r]) => Number.isNaN(r) ? (m = true, "") :
+		(m ? (m = false, "M") : "L") +
 		( r * Math.cos(t)).toFixed(2) + "," +
 		(-r * Math.sin(t)).toFixed(2)).join(""));
 }
@@ -435,6 +442,10 @@ function setAngle(config)
 			thetaStep = Math.PI / 180; // 1 degree;
 			numPoints = (thetaEnd - thetaStart) / thetaStep + 1;
 		}
+		if (!Number.isInteger(numPoints)) {
+			numPoints = Math.ceil(numPoints);
+			thetaStep = (thetaEnd - thetaStart) / (numPoints - 1);
+		}
 		textNodes.thetaEnd.nodeValue = toStr2(thetaEnd * 180 / Math.PI) + "\u00B0";
 	} else {
 		if (!(typeof thetaStep === "number" && thetaStep > 0))
@@ -467,7 +478,6 @@ function logSpiral(config)
 		growthAngle = Math.PI; // 180 degrees
 
 	if (typeof slopeAngle === "number") {
-		// tangentAngle = math.PI / 2 - slopeAngle;
 
 		const k = Math.tan(slopeAngle);
 		const radius = i => initialRadius * Math.exp(k * theta(i));
@@ -551,6 +561,124 @@ function spiral(config)
 	setFormula(spiralFormula(a, b, c));
 	return config;
 }
+function sinSpiral(config)
+{
+	const theta = setAngle(config);
+	let {a, n, b} = config;
+
+	if (typeof a !== "number") a = 1;
+	if (typeof n !== "number" || n === 0) n = 1;
+	if (typeof b !== "number") b = 0;
+
+	config.radius = i => a * Math.pow(Math.cos(n * theta(i)), 1 / n) + b;
+
+	const nStr = toStr(n);
+	setFormula(toStr(a) + " * cos(" + nStr + " * theta) ^ (1 / " + nStr + ")" +
+		(b === 0 ? "" : " + " + toStr(b)));
+	return config;
+}
+const unnamedCurves = {
+"a*sin(b*t)*t+c": [["a", "b", "c"],
+function(config) {
+	const theta = setAngle(config);
+	let {a, b, c} = config;
+
+	if (typeof a !== "number") a = 1;
+	if (typeof b !== "number") b = 1;
+	if (typeof c !== "number") c = 0;
+
+	config.radius = i => {
+		const t = theta(i);
+		return a * Math.sin(b * t) * t + c;
+	};
+
+	setFormula(toStr(a) + " * sin(" + toStr(b) + " * theta) * theta" + (c === 0 ? "" : " + " + toStr(c)));
+	return config;
+}],
+"a*sin(b*t)/t+c": [["a", "b", "c"],
+function(config) {
+	const theta = setAngle(config);
+	let {a, b, c} = config;
+
+	if (typeof a !== "number") a = 1;
+	if (typeof b !== "number") b = 1;
+	if (typeof c !== "number") c = 0;
+
+	config.radius = i => {
+		const t = theta(i);
+		return a * Math.sin(b * t) / t + c;
+	};
+
+	setFormula(toStr(a) + " * sin(" + toStr(b) + " * theta) / theta" + (c === 0 ? "" : " + " + toStr(c)));
+	return config;
+}],
+"a*sin(b*t)*cos(c*t)+d": [["a", "b", "c", "d"],
+function(config) {
+	const theta = setAngle(config);
+	let {a, b, c, d} = config;
+
+	if (typeof a !== "number") a = 1;
+	if (typeof b !== "number") b = 1;
+	if (typeof c !== "number") c = 1;
+	if (typeof d !== "number") d = 0;
+
+	config.radius = i => {
+		const t = theta(i);
+		return a * Math.sin(b * t) * Math.cos(c * t) + d;
+	};
+
+	setFormula(toStr(a) + " * sin(" + toStr(b) + " * theta) * cos(" + toStr(c) + " * theta)" +
+		(d === 0 ? "" : " + " + toStr(d)));
+	return config;
+}],
+"a*t+b*cos(c*t)+d": [["a", "b", "c", "d"],
+function(config) {
+	const theta = setAngle(config);
+	let {a, b, c, d} = config;
+
+	if (typeof a !== "number") a = 1;
+	if (typeof b !== "number") b = 1;
+	if (typeof c !== "number") c = 1;
+	if (typeof d !== "number") d = 0;
+
+	config.radius = i => {
+		const t = theta(i);
+		return a * t + b * Math.cos(c * t) + d;
+	};
+
+	setFormula(`${toStr(a)} * theta + ${toStr(b)} * cos(${toStr(c)} * theta) + ${toStr(d)}`);
+	return config;
+}],
+"a*t+b*sin(bt*t)+c*cos(ct*t)+d": [["a", "b", "c", "d", "bt", "ct"],
+function(config) {
+	const theta = setAngle(config);
+	let {a, b, c, d, bt, ct} = config;
+
+	if (typeof a !== "number") a = 1;
+	if (typeof b !== "number") b = 1;
+	if (typeof c !== "number") c = 1;
+	if (typeof d !== "number") d = 0;
+	if (typeof bt !== "number") bt = 2 * Math.PI;
+	if (typeof ct !== "number") ct = 2 * Math.PI;
+
+	config.radius = i => {
+		const t = theta(i);
+		return a * t + b * Math.sin(bt * t) + c * Math.cos(ct * t) + d;
+	};
+
+	setFormula(`${toStr(a)} * theta + ${toStr(b)} * sin(${toStr(bt)} * theta) + ${toStr(c)} * cos(${toStr(ct)} * theta) + ${toStr(d)}`);
+	return config;
+}],
+};
+function parseUnnamedCurve(q, v)
+{
+	const i = v.indexOf(",");
+	const curve = unnamedCurves[i < 0 ? v : v.substring(0, i)];
+	if (!curve) return;
+	q.curve = curve[1];
+	if (i >= 0)
+		parseExprList(q, v.substring(i + 1), curve[0]);
+}
 function morph(config, svg)
 {
 	const props = config.morph;
@@ -632,9 +760,14 @@ function main()
 		},
 		morph: parseMorph,
 		points: parsePoints,
+		r: parseUnnamedCurve,
 		rose: function(q, v) {
 			q.curve = roseCurve;
 			parseExprList(q, v, ["scale", "k", "offset"]);
+		},
+		sinspiral: function(q, v) {
+			q.curve = sinSpiral;
+			parseExprList(q, v, ["a", "n", "b"]);
 		},
 		spiral: function(q, v) {
 			q.curve = spiral;
@@ -765,7 +898,8 @@ window.addEventListener("DOMContentLoaded", main);
 <td><a href="polar.html?logspiral=,,,phi,2pi&theta=,8pi&stroke=magenta,4&anim=,">O</a>
 /   <a href="polar.html?logspiral=,,,phi,2pi&theta=,8pi&stroke=magenta,4&animtan=,">X</a></td>
 <td>0 - 8pi</td>
-<td>growthFactor = phi, growthAngle = 2pi</td>
+<td>growthFactor = phi
+<br>growthAngle = 2pi</td>
 </tr>
 <tr>
 <td><a href="polar.html?logspiral=,6pi/180&theta=,8pi&stroke=,4">r = 40*e^(theta*tan(6pi/180))</a></td>
@@ -846,6 +980,42 @@ window.addEventListener("DOMContentLoaded", main);
 <td>pi/12 - 32pi</td>
 <td><a href="https://en.wikipedia.org/wiki/Lituus_(mathematics)">Lituus</a></td>
 </tr>
+<tr><th colspan="4"><a href="https://en.wikipedia.org/wiki/Sinusoidal_spiral">Sinusoidal Spirals</a></th></tr>
+<tr>
+<td><a href="polar.html?sinspiral=10,-1/3&theta=-5pi/4,5pi/4,pi/360">r = 10/cos(&minus;theta/3)^3</a></td>
+<td></td>
+<td>&minus;5pi/4 - 5pi/4</td>
+<td><a href="https://en.wikipedia.org/wiki/Tschirnhausen_cubic">Tschirnhausen cubic</a>
+<br>thetaStep = 0.5&deg;</td>
+</tr>
+<tr>
+<td><a href="polar.html?sinspiral=400,1/3&theta=0,4pi,pi/180">r = 400*cos(theta/3)^3</a></td>
+<td></td>
+<td>0 - 4pi</td>
+<td><a href="https://en.wikipedia.org/wiki/Cayley%27s_sextic">Cayley's sextic</a>
+<br>thetaStep = 1&deg;</td>
+</tr>
+<tr>
+<td><a href="polar.html?sinspiral=400,2&theta=0,2pi,pi/18000">r = 400*sqrt(cos(2*theta))</a></td>
+<td></td>
+<td>0 - 2pi</td>
+<td><a href="https://en.wikipedia.org/wiki/Lemniscate_of_Bernoulli">Lemniscate of Bernoulli</a>
+<br>thetaStep = 0.01&deg;</td>
+</tr>
+<tr><th colspan="4">Other Curves</th></tr>
+<tr>
+<td><a href="polar.html?r=a*sin(b*t)/t+c,400&theta=-12pi,12pi,pi/720">r = 400*sin(theta)/theta</a></td>
+<td></td>
+<td>&minus;12pi - 12pi</td>
+<td><a href="https://en.wikipedia.org/wiki/Cochleoid">Cochleoid</a>
+<br>thetaStep = 0.25&deg;</td>
+</tr>
+<tr>
+<td><a href="polar.html?r=a*t+b*cos(c*t)+d,4,56,3e,56&theta=0,16pi,pi/180">r = 4*theta + 56*cos(3*e*theta) + 56</a></td>
+<td></td>
+<td>0 - 16pi</td>
+<td>thetaStep = 1&deg;</td>
+</tr>
 <tr><th colspan="4">Morph Demos</th></tr>
 <tr>
 <td colspan="2"><a href="polar.html?rose=,&morph=200,100,scale:100:300,k:e:e+2,offset:-100:100&theta=,32pi,pi/180">r = scale * cos(k*theta) + offset</a>
@@ -908,6 +1078,71 @@ morphSteps = 130
 numPoints = 80
 <br>morphSteps = 179
 <br>morphDelay = 100ms</td>
+</tr>
+<tr>
+<td colspan="2"><a href="polar.html?spiral=,6&morph=180,100,thetaStep:pi/2:pi&points=120">r = 6 * theta</a></td>
+<td>&nbsp;</td>
+<td><div class="morph">
+<div>thetaStep =</div><div>pi/2 &rarr;</div><div>pi</div>
+</div>
+numPoints = 120
+<br>morphSteps = 180
+<br>morphDelay = 100ms</td>
+</tr>
+<tr>
+<td colspan="2"><a href="polar.html?r=a*sin(b*t)*t+c,9&theta=0,12pi&morph=200,150,b:1:17,c:0:17">r = 9*sin(b*theta)*theta + c</a>
+<div class="morph">
+<div>b =</div><div>1 &rarr;</div><div>17</div>
+<div>c =</div><div>0 &rarr;</div><div>17</div>
+</div></td>
+<td>0 - 12pi</td>
+<td>morphSteps = 200
+<br>morphDelay = 150ms</td>
+</tr>
+<tr>
+<td colspan="2"><a href="polar.html?r=a*sin(b*t)*cos(c*t)+d,-200,1,1,0&theta=0,12pi,pi/360&morph=100,100,b:0:20,d:220:20">r = &minus;200*sin(b*theta)*cos(theta) + d</a>
+<div class="morph">
+<div>b =</div><div>0 &rarr;</div><div>20</div>
+<div>d =</div><div>220 &rarr;</div><div>20</div>
+</div></td>
+<td>0 - 12pi</td>
+<td>thetaStep = 0.5&deg;
+<br>morphSteps = 100
+<br>morphDelay = 100ms</td>
+</tr>
+<tr>
+<td colspan="2"><a href="polar.html?r=a*t+b*sin(bt*t)+c*cos(ct*t)+d,9,1,1,0,2pi,2pi&theta=0,12pi&morph=90,20,b:1:181,c:181:1">r = 9*theta
+<br>&nbsp;&nbsp;&nbsp;&nbsp;+ b*sin(2pi*theta)
+<br>&nbsp;&nbsp;&nbsp;&nbsp;+ c*cos(2pi*theta)</a>
+<div class="morph">
+<div>b =</div><div>1 &rarr;</div><div>181</div>
+<div>c =</div><div>181 &rarr;</div><div>1</div>
+</div></td>
+<td>0 - 12pi</td>
+<td>morphSteps = 90
+<br>morphDelay = 20ms</td>
+</tr>
+<tr>
+<td colspan="2"><a href="polar.html?r=a*t+b*sin(bt*t)+c*cos(ct*t)+d,9,36,1,0,2pi,2pi&theta=0,12pi&morph=100,50,c:-360:360">r = 9*theta
+<br>&nbsp;&nbsp;&nbsp;&nbsp;+ 36*sin(2pi*theta)
+<br>&nbsp;&nbsp;&nbsp;&nbsp;+ c*cos(2pi*theta)</a>
+<div class="morph">
+<div>c =</div><div>&minus;360 &rarr;</div><div>360</div>
+</div></td>
+<td>0 - 12pi</td>
+<td>morphSteps = 100
+<br>morphDelay = 50ms</td>
+</tr>
+<tr>
+<td colspan="2"><a href="polar.html?r=a*t+b*sin(bt*t)+c*cos(ct*t)+d,9,27,-99,0,4,4&theta=0,12pi&morph=100,40,d:-360:120">r = 9*theta
+<br>&nbsp;&nbsp;&nbsp;&nbsp;+ 27*sin(4*theta)
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&minus; 99*cos(4*theta) + d</a>
+<div class="morph">
+<div>d =</div><div>&minus;360 &rarr;</div><div>360</div>
+</div></td>
+<td>0 - 12pi</td>
+<td>morphSteps = 100
+<br>morphDelay = 40ms</td>
 </tr>
 </table></td>
 </tr>
