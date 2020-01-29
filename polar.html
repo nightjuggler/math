@@ -81,7 +81,7 @@ th {
 	stroke: blue;
 	stroke-width: 2px;
 }
-.tangentAngle {
+.tangentArc {
 	fill: none;
 	stroke: red;
 	stroke-width: 4px;
@@ -335,7 +335,7 @@ function roseFormula(a, b, c)
 	formula += "cos(";
 	if (b !== 1) formula += toStr(b) + " * ";
 	formula += "theta)";
-	if (c !== 0) formula += c < 0 ? " - " + toStr(-c) : " + " + toStr(c);
+	if (c !== 0) formula += c < 0 ? " \u2212 " + toStr(-c) : " + " + toStr(c);
 	return formula;
 }
 function spiralFormula(a, b, c)
@@ -355,7 +355,7 @@ function setRadialPath(path, data)
 		( r * Math.cos(t)).toFixed(2) + "," +
 		(-r * Math.sin(t)).toFixed(2)).join(""));
 }
-function updateTangent(i, config, tangent, radial, arcPath)
+function updateTangent(i, config, radial, tangent, tangentArc)
 {
 /*
 	The slope m of the line tangent to the curve r = f(t) at point (r, t) is
@@ -365,28 +365,46 @@ function updateTangent(i, config, tangent, radial, arcPath)
 	const t = config.theta(i);
 	const r = config.radius(t);
 
+	textNodes.theta.nodeValue = toStr2(t * 180 / Math.PI);
+
 	if (Number.isNaN(r)) {
+		radial.removeAttribute("x2");
+		radial.removeAttribute("y2");
 		tangent.removeAttribute("x1");
 		tangent.removeAttribute("y1");
 		tangent.removeAttribute("x2");
 		tangent.removeAttribute("y2");
-		radial.removeAttribute("x2");
-		radial.removeAttribute("y2");
-		arcPath.removeAttribute("d");
+		tangentArc.removeAttribute("d");
 
-		textNodes.theta.nodeValue = toStr2(t * 180 / Math.PI);
 		textNodes.radius.nodeValue = "NaN";
 		textNodes.slopeAngle.nodeValue = "NaN";
 		textNodes.tangentAngle.nodeValue = "NaN";
 		return;
 	}
 
-	const drdt = config.derivative(t);
 	const sin = Math.sin(t);
 	const cos = Math.cos(t);
 	const x = r * cos;
 	const y = r * sin;
+
+	textNodes.radius.nodeValue = toStr2(r);
+	radial.setAttribute("x2", x);
+	radial.setAttribute("y2", -y);
+
+	const drdt = config.derivative(t);
 	const m = (drdt * sin + x) / (drdt * cos - y);
+
+	if (Number.isNaN(m)) {
+		tangent.removeAttribute("x1");
+		tangent.removeAttribute("y1");
+		tangent.removeAttribute("x2");
+		tangent.removeAttribute("y2");
+		tangentArc.removeAttribute("d");
+
+		textNodes.slopeAngle.nodeValue = "NaN";
+		textNodes.tangentAngle.nodeValue = "NaN";
+		return;
+	}
 /*
 	The tangent of the slope angle a of the tangent line is the slope m: tan(a) = m
 
@@ -403,8 +421,6 @@ function updateTangent(i, config, tangent, radial, arcPath)
 	tangent.setAttribute("y1", -(y + dy));
 	tangent.setAttribute("x2", x - dx);
 	tangent.setAttribute("y2", -(y - dy));
-	radial.setAttribute("x2", x);
-	radial.setAttribute("y2", -y);
 
 	const arcRadius = 20;
 	if (r > arcRadius) {
@@ -418,12 +434,12 @@ function updateTangent(i, config, tangent, radial, arcPath)
 			arcDx = -arcDx;
 		}
 
-		arcPath.setAttribute("d", [
+		tangentArc.setAttribute("d", [
 			"M", arcX1, -arcY1,
 			"A", arcRadius, arcRadius, 0, 0, 0, x + arcDx, -(y + arcDy),
 		].join(" "));
 	} else
-		arcPath.setAttribute("d", "");
+		tangentArc.setAttribute("d", "");
 /*
 	The tangent of the tangent angle psi of the curve r = f(t) at point (r, t) is
 
@@ -436,8 +452,6 @@ function updateTangent(i, config, tangent, radial, arcPath)
 */
 	const tangentAngle = Math.atan2(r, drdt) * 180 / Math.PI;
 
-	textNodes.theta.nodeValue = toStr2(t * 180 / Math.PI);
-	textNodes.radius.nodeValue = toStr2(r);
 	textNodes.slopeAngle.nodeValue = toStr2(90 - tangentAngle);
 	textNodes.tangentAngle.nodeValue = toStr2(tangentAngle);
 }
@@ -831,9 +845,9 @@ function main()
 	}
 
 	if (animateTangent) {
-		const tangent = svg.appendChild(createSvgElem("line", [["class", "tangent"]]));
 		const radial = svg.appendChild(createSvgElem("line", [["class", "radial"]]));
-		const tangentAngle = svg.appendChild(createSvgElem("path", [["class", "tangentAngle"]]));
+		const tangent = svg.appendChild(createSvgElem("line", [["class", "tangent"]]));
+		const tangentArc = svg.appendChild(createSvgElem("path", [["class", "tangentArc"]]));
 
 		let i = 0;
 		const n = data.length - 1;
@@ -847,7 +861,7 @@ function main()
 			else {
 				i = n; if (!oneFrame && !reverse) done = true;
 			}
-			updateTangent(i, config, tangent, radial, tangentAngle);
+			updateTangent(i, config, radial, tangent, tangentArc);
 			if (done)
 				animationEnd();
 			else if (!oneFrame)
