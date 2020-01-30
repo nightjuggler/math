@@ -422,22 +422,24 @@ function updateTangent(i, config, radial, tangent, tangentArc)
 	tangent.setAttribute("x2", x - dx);
 	tangent.setAttribute("y2", -(y - dy));
 
-	const arcRadius = 20;
-	if (r > arcRadius) {
+	const rlt0 = r < 0;
+	const arcRadius = rlt0 ? -20 : 20;
+	if (rlt0 ? r < arcRadius : r > arcRadius) {
+		const sweep = rlt0 ? 1 : 0;
 		const arcX1 = (r - arcRadius) * cos;
 		const arcY1 = (r - arcRadius) * sin;
 		let arcDx = arcRadius / Math.sqrt(1 + m * m);
 		let arcDy = arcDx === 0 ? arcRadius : m * arcDx;
 
-		if (m > 0 ? drdt < 0 ? sin <= 0 : cos > 0 : drdt < 0 ? cos <= 0 : sin <= 0) {
+		if (rlt0 ?
+			m > 0 ? drdt < 0 ? cos <= 0 : sin > 0 : drdt < 0 ? sin >  0 : cos >  0 :
+			m > 0 ? drdt < 0 ? sin <= 0 : cos > 0 : drdt < 0 ? cos <= 0 : sin <= 0)
+		{
 			arcDy = -arcDy;
 			arcDx = -arcDx;
 		}
-
-		tangentArc.setAttribute("d", [
-			"M", arcX1, -arcY1,
-			"A", arcRadius, arcRadius, 0, 0, 0, x + arcDx, -(y + arcDy),
-		].join(" "));
+		tangentArc.setAttribute("d", ["M", arcX1, -arcY1,
+			"A", arcRadius, arcRadius, 0, 0, sweep, x + arcDx, -(y + arcDy)].join(" "));
 	} else
 		tangentArc.setAttribute("d", "");
 /*
