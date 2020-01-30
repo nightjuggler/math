@@ -267,14 +267,14 @@ function parseQueryString(params, handlers, flags)
 {
 	const q = window.location.search;
 
-	if (typeof q !== 'string' || q.charAt(0) !== '?') return;
+	if (typeof q !== "string" || q.charAt(0) !== "?") return;
 
 	if (!flags) flags = {};
 	if (!handlers) handlers = {};
 
-	for (const s of q.substr(1).split('&'))
+	for (const s of q.substr(1).split("&"))
 	{
-		const i = s.indexOf('=');
+		const i = s.indexOf("=");
 		if (i < 0 && isValidId(s, 6) && flags[s]) {
 			params[flags[s]] = true;
 			continue;
@@ -681,8 +681,10 @@ function(config)
 function parseUnnamedCurve(q, v)
 {
 	const i = v.indexOf(",");
-	const curve = unnamedCurves[i < 0 ? v : v.substring(0, i)];
-	if (!curve) return;
+	const formula = i < 0 ? v : v.substring(0, i);
+	if (!unnamedCurves.hasOwnProperty(formula)) return;
+	const curve = unnamedCurves[formula];
+	if (!curve || curve.length !== 2) return;
 	q.curve = curve[1];
 	if (i >= 0)
 		parseExprList(q, v.substring(i + 1), curve[0]);
@@ -974,7 +976,7 @@ window.addEventListener("DOMContentLoaded", main);
 <td><a href="polar.html?spiral=,40,2&theta=,16pi&anim=,">O</a>
 /   <a href="polar.html?spiral=,40,2&theta=,16pi&animtan=,50">X</a></td>
 <td>0 - 16pi</td>
-<td><a href="https://en.wikipedia.org/wiki/Fermat's_spiral">Fermat's spiral</a></td>
+<td><a href="https://en.wikipedia.org/wiki/Fermat%27s_spiral">Fermat's spiral</a></td>
 </tr>
 <tr>
 <td><a href="polar.html?spiral=,400,-1&theta=pi/4,16pi">r = 400/theta</a></td>
