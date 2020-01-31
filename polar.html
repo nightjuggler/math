@@ -150,10 +150,16 @@ function createSvgElem(tagName, attributes)
 
 	return element;
 }
-function createSvg(width, height)
+function createSvg(config)
 {
-	const centerX = Math.floor(width / 2);
-	const centerY = Math.floor(height / 2);
+	let width = config.width || 900;
+	let height = config.height || 680;
+
+	if (width < 200) width = 200; else if (width > 2000) width = 2000;
+	if (height < 200) height = 200; else if (height > 2000) height = 2000;
+
+	const centerX = Math.floor(width / 2) + (config.centerX || 0);
+	const centerY = Math.floor(height / 2) + (config.centerY || 0);
 
 	const svg = document.getElementById("graph")
 		.appendChild(createSvgElem("svg", [["width", width], ["height", height]]))
@@ -168,7 +174,7 @@ function createSvg(width, height)
 
 	return svg;
 }
-function parseAnimate(q, v, propName)
+function parseAnimate(v, config, prop)
 {
 	const m = v.match(/^([1-9][0-9]{0,2})?,([1-9][0-9]{1,3})?$/);
 	if (m === null) return;
@@ -176,12 +182,15 @@ function parseAnimate(q, v, propName)
 	const animate = {};
 	if (step) animate.step = parseInt(step, 10);
 	if (delay) animate.delay = parseInt(delay, 10);
-	q[propName] = animate;
+	config[prop] = animate;
 }
-function parseDemo(q, v)
+function parseCenter(v, config)
 {
-	if (v.match(/^[1-9][0-9]?$/) !== null)
-		q.demo = parseInt(v, 10);
+	const m = v.match(/^(-?[1-9][0-9]{0,3})?,(-?[1-9][0-9]{0,3})?$/);
+	if (m === null) return;
+	const [, x, y] = m;
+	if (x) config.centerX = parseInt(x, 10);
+	if (y) config.centerY = parseInt(y, 10);
 }
 function parseExpr(v)
 {
@@ -204,22 +213,24 @@ function parseExpr(v)
 	}
 	return result;
 }
-function parseExprList(q, v, propList)
+function parseExprList(v, config, props)
 {
+	if (!props) props = config.props;
+
 	const values = v.split(",");
-	const numValues = values.length > propList.length ? propList.length : values.length;
+	const numValues = values.length > props.length ? props.length : values.length;
 
 	for (let i = 0; i < numValues; i += 1)
-		if ((v = parseExpr(values[i])) !== null) q[propList[i]] = v;
+		if ((v = parseExpr(values[i])) !== null) config[props[i]] = v;
 }
-function parseMorph(q, v)
+function parseMorph(v, config)
 {
 	v = v.split(",");
 	if (v.length < 3) return;
 	const [steps, delay, ...props] = v;
-	if (/^[1-9][0-9]{0,3}$/.test(steps)) q.morphSteps = parseInt(steps, 10);
+	if (/^[1-9][0-9]{0,3}$/.test(steps)) config.morphSteps = parseInt(steps, 10);
 	else if (steps !== "") return;
-	if (/^[1-9][0-9]{1,3}$/.test(delay)) q.morphDelay = parseInt(delay, 10);
+	if (/^[1-9][0-9]{1,3}$/.test(delay)) config.morphDelay = parseInt(delay, 10);
 	else if (delay !== "") return;
 
 	const morph = [];
@@ -232,14 +243,14 @@ function parseMorph(q, v)
 		if ((maxValue = parseExpr(maxValue)) === null) return;
 		morph.push([prop, minValue, maxValue]);
 	}
-	q.morph = morph;
+	config.morph = morph;
 }
-function parsePoints(q, v)
+function parseNumber(v, len, config, prop)
 {
-	if (/^[1-9][0-9]{0,5}$/.test(v))
-		q.numPoints = parseInt(v, 10);
+	if (v.length <= len && /^[1-9][0-9]*$/.test(v))
+		config[prop] = parseInt(v, 10);
 }
-function parseStroke(q, v)
+function parseStroke(v)
 {
 	const m = v.match(/^(?:([A-Za-z]+)|(gradient[1-9]))?(?:,([1-9][0-9]?))?$/);
 	if (m === null) return;
@@ -259,11 +270,7 @@ function parseStroke(q, v)
 			break;
 		}
 }
-function isValidId(s, n)
-{
-	return s.length <= n && s.match(/^[a-z][_0-9a-z]*$/) !== null;
-}
-function parseQueryString(params, handlers, flags)
+function parseQueryString(config, handlers, flags)
 {
 	const q = window.location.search;
 
@@ -272,19 +279,21 @@ function parseQueryString(params, handlers, flags)
 	if (!flags) flags = {};
 	if (!handlers) handlers = {};
 
-	for (const s of q.substr(1).split("&"))
+	const validKey = (key, len) => key.length <= len && /^[a-z][_0-9a-z]*$/.test(key);
+
+	for (const s of q.substring(1).split("&"))
 	{
 		const i = s.indexOf("=");
-		if (i < 0 && isValidId(s, 6) && flags[s]) {
-			params[flags[s]] = true;
+		if (i < 0 && validKey(s, 6) && flags.hasOwnProperty(s)) {
+			config[flags[s]] = true;
 			continue;
 		}
 		if (i < 1 || i === s.length - 1) continue;
-		const k = s.substr(0, i);
-		const v = s.substr(i + 1);
+		const key = s.substring(0, i);
+		const val = s.substring(i + 1);
 
-		if (isValidId(k, 12) && handlers[k])
-			handlers[k](params, v);
+		if (validKey(key, 12) && handlers.hasOwnProperty(key))
+			handlers[key](val, config);
 	}
 }
 function setTextNodes()
@@ -487,13 +496,16 @@ function setAngle(config)
 	}
 
 	config.theta = i => thetaStart + i * thetaStep;
-	config.numPoints = numPoints;
 
 	textNodes.thetaStart.nodeValue = toStr2(thetaStart * 180 / Math.PI);
 	textNodes.thetaStep.nodeValue = toStr2(thetaStep * 180 / Math.PI);
 	textNodes.numPoints.nodeValue = toStr2(numPoints);
+
+	return numPoints;
 }
-function logSpiral(config)
+const curveConfigs = {
+logspiral: [["initialRadius", "slopeAngle", "tangentAngle", "growthFactor", "growthAngle"],
+function(config)
 {
 	let {initialRadius, slopeAngle, tangentAngle, growthFactor, growthAngle} = config;
 
@@ -545,8 +557,9 @@ function logSpiral(config)
 				["r", initialRadius * Math.pow(growthFactor, i)]]));
 	};
 	return config;
-}
-function roseCurve(config)
+}],
+rose: [["scale", "k", "offset"],
+function(config)
 {
 	let {scale, k, offset} = config;
 
@@ -565,8 +578,9 @@ function roseCurve(config)
 		svg.appendChild(createSvgElem("circle", [["class", "axis"], ["cx", 0], ["cy", 0], ["r", scale]]));
 	};
 	return config;
-}
-function spiral(config)
+}],
+spiral: [["a", "b", "c"],
+function(config)
 {
 	let {a, b, c} = config;
 	if (typeof a !== "number") a = 0;
@@ -575,15 +589,16 @@ function spiral(config)
 
 	if (c === 1) {
 		config.radius = t => a + b * t;
-		config.derivative = t => b;
+		config.derivative = () => b;
 	} else {
 		config.radius = t => a + b * Math.pow(t, 1 / c);
 		config.derivative = t => b * Math.pow(t, 1 / c - 1) / c;
 	}
 	setFormula(spiralFormula(a, b, c));
 	return config;
-}
-function sinSpiral(config)
+}],
+sinspiral: [["a", "n", "b"],
+function(config)
 {
 	let {a, n, b} = config;
 	if (typeof a !== "number") a = 1;
@@ -597,8 +612,7 @@ function sinSpiral(config)
 	setFormula(toStr(a) + " * cos(" + nStr + " * theta) ^ (1 / " + nStr + ")" +
 		(b === 0 ? "" : " + " + toStr(b)));
 	return config;
-}
-const unnamedCurves = {
+}],
 "a*sin(b*t)*t+c": [["a", "b", "c"],
 function(config)
 {
@@ -680,34 +694,47 @@ function(config)
 	return config;
 }],
 };
-function parseUnnamedCurve(q, v)
+function setCurve(config, key, csv)
+{
+	if (!curveConfigs.hasOwnProperty(key)) return;
+
+	[config.props, config.curve] = curveConfigs[key];
+
+	if (csv) parseExprList(csv, config);
+}
+function parseCurve(v, config)
 {
 	const i = v.indexOf(",");
-	const formula = i < 0 ? v : v.substring(0, i);
-	if (!unnamedCurves.hasOwnProperty(formula)) return;
-	const curve = unnamedCurves[formula];
-	if (!curve || curve.length !== 2) return;
-	q.curve = curve[1];
-	if (i >= 0)
-		parseExprList(q, v.substring(i + 1), curve[0]);
+	if (i < 0)
+		setCurve(config, v);
+	else
+		setCurve(config, v.substring(0, i), v.substring(i + 1));
 }
 function makeCurve(config)
 {
-	setAngle(config);
-	const {numPoints, theta, radius} = config.curve(config);
+	const numPoints = setAngle(config);
+	const {theta, radius} = config.curve(config);
 	return Array.from({length: numPoints}, (t, i) => [t = theta(i), radius(t)]);
 }
 function morph(config, svg)
 {
-	const props = config.morph;
+	const props = [];
 	const delay = config.morphDelay || 100;
 	const steps = config.morphSteps || 100;
+	const validProps = new Set(config.props);
 
-	for (const p of props) {
-		const [prop, minValue, maxValue] = p;
-		config[prop] = minValue;
-		p.push((maxValue - minValue) / steps);
+	for (const prop of ["thetaStart", "thetaEnd", "thetaStep", "numPoints"])
+		validProps.add(prop);
+
+	for (const propConfig of config.morph) {
+		const [prop, minValue, maxValue] = propConfig;
+		if (validProps.has(prop)) {
+			config[prop] = minValue;
+			propConfig.push((maxValue - minValue) / steps);
+			props.push(propConfig);
+		}
 	}
+
 	const path = svg.appendChild(createSvgElem("path", [["class", "curve"]]));
 
 	const update = function(oneFrame, reverse) {
@@ -737,6 +764,7 @@ function morph(config, svg)
 }
 function predefinedConfig(i)
 {
+	const logSpiral = curveConfigs.logspiral[1];
 	const growthFactor = mathConstants.phi;
 	const growthAngle = 2 * Math.PI;
 	const configs = [
@@ -761,54 +789,42 @@ function main()
 
 	let config = {};
 	parseQueryString(config, {
-		anim: function(q, v) {
-			parseAnimate(q, v, "animate");
-		},
-		animtan: function(q, v) {
-			parseAnimate(q, v, "animateTangent");
-		},
-		demo: parseDemo,
-		logspiral: function(q, v) {
-			q.curve = logSpiral;
-			parseExprList(q, v, ["initialRadius", "slopeAngle", "tangentAngle",
-				"growthFactor", "growthAngle"]);
-		},
-		morph: parseMorph,
-		points: parsePoints,
-		r: parseUnnamedCurve,
-		rose: function(q, v) {
-			q.curve = roseCurve;
-			parseExprList(q, v, ["scale", "k", "offset"]);
-		},
-		sinspiral: function(q, v) {
-			q.curve = sinSpiral;
-			parseExprList(q, v, ["a", "n", "b"]);
-		},
-		spiral: function(q, v) {
-			q.curve = spiral;
-			parseExprList(q, v, ["a", "b", "c"]);
-		},
-		stroke: parseStroke,
-		theta: function(q, v) {
-			parseExprList(q, v, ["thetaStart", "thetaEnd", "thetaStep"]);
-		},
-	}, {});
+		anim:    function(v, c) { parseAnimate(v, c, "animate"); },
+		animtan: function(v, c) { parseAnimate(v, c, "animateTangent"); },
+		demo:    function(v, c) { parseNumber(v, 2, c, "demo"); },
+		h:       function(v, c) { parseNumber(v, 4, c, "height"); },
+		points:  function(v, c) { parseNumber(v, 6, c, "numPoints"); },
+		theta:   function(v, c) { parseExprList(v, c, ["thetaStart", "thetaEnd", "thetaStep"]); },
+		w:       function(v, c) { parseNumber(v, 4, c, "width"); },
+
+		center:  parseCenter,
+		morph:   parseMorph,
+		r:       parseCurve,
+		stroke:  parseStroke,
+
+		logspiral: function(v, c) { setCurve(c, "logspiral", v); },
+		rose:      function(v, c) { setCurve(c, "rose", v); },
+		sinspiral: function(v, c) { setCurve(c, "sinspiral", v); },
+		spiral:    function(v, c) { setCurve(c, "spiral", v); },
+	});
 
 	if (config.demo)
 		config = predefinedConfig(config.demo - 1);
 	if (!config.curve)
-		config.curve = roseCurve;
-	if (config.curve !== logSpiral) {
+		setCurve(config, "rose");
+
+	const isLogSpiral = config.curve === curveConfigs.logspiral[1];
+	if (!isLogSpiral) {
 		removeTextRow(textNodes.growthFactor);
 		removeTextRow(textNodes.growthAngle);
 	}
 
-	const svg = createSvg(900, 680);
+	const svg = createSvg(config);
 
 	if (config.morph) {
 		removeTextRow(textNodes.theta);
 		removeTextRow(textNodes.radius);
-		if (config.curve !== logSpiral) {
+		if (!isLogSpiral) {
 			removeTextRow(textNodes.slopeAngle);
 			removeTextRow(textNodes.tangentAngle);
 		}
@@ -873,7 +889,7 @@ function main()
 		};
 		animationBegin(update);
 	}
-	else if (config.curve !== logSpiral) {
+	else if (!isLogSpiral) {
 		removeTextRow(textNodes.slopeAngle);
 		removeTextRow(textNodes.tangentAngle);
 	}
