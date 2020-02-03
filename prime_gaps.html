@@ -137,44 +137,42 @@ function addHandlers3(_enter, leave)
 		node.addEventListener("mouseleave", leave);
 	}
 }
-function isValidId(s, n)
+function parseMaxNumber(v, q)
 {
-	return s.length <= n && s.match(/^[a-z][_0-9a-z]*$/) !== null;
-}
-function parseMaxNumber(q, v)
-{
-	if (v.match(/^[1-9][0-9]*$/))
+	if (/^[1-9][0-9]*$/.test(v))
 		q.maxNumber = parseInt(v, 10);
 }
-function parseModulus(q, v)
+function parseModulus(v, q)
 {
-	if (v.match(/^[1-9][0-9]?$/))
+	if (/^[1-9][0-9]?$/.test(v))
 		q.modulus = parseInt(v, 10);
 	else if (v === "0")
 		q.modulus = 0;
 }
-function parseQueryString(params, handlers, flags)
+function parseQueryString(config, handlers, flags)
 {
 	const q = window.location.search;
 
-	if (typeof q !== 'string' || q.charAt(0) !== '?') return;
+	if (typeof q !== "string" || q.charAt(0) !== "?") return;
 
 	if (!flags) flags = {};
 	if (!handlers) handlers = {};
 
-	for (const s of q.substr(1).split('&'))
+	const validKey = (key, len) => key.length <= len && /^[a-z][_0-9a-z]*$/.test(key);
+
+	for (const s of q.substring(1).split("&"))
 	{
-		const i = s.indexOf('=');
-		if (i < 0 && isValidId(s, 3) && flags[s]) {
-			params[flags[s]] = true;
+		const i = s.indexOf("=");
+		if (i < 0 && validKey(s, 3) && flags.hasOwnProperty(s)) {
+			config[flags[s]] = true;
 			continue;
 		}
 		if (i < 1 || i === s.length - 1) continue;
-		const k = s.substr(0, i);
-		const v = s.substr(i + 1);
+		const k = s.substring(0, i);
+		const v = s.substring(i + 1);
 
-		if (isValidId(k, 3) && handlers[k])
-			handlers[k](params, v);
+		if (validKey(k, 3) && handlers.hasOwnProperty(k))
+			handlers[k](v, config);
 	}
 }
 function getPrimes(maxNumber)
