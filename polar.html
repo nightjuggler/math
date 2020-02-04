@@ -244,8 +244,6 @@ function parseExpr(v)
 }
 function parseExprList(v, config, props)
 {
-	if (!props) props = config.props;
-
 	const values = v.split(",");
 	const numValues = values.length > props.length ? props.length : values.length;
 
@@ -354,28 +352,9 @@ function setFormula(formula)
 const regEx = /\.?0+$/;
 const toStr = n => Number.isInteger(n) ? n : n.toFixed(6).replace(regEx, "");
 const toStr2 = n => Number.isInteger(n) ? n : n.toFixed(2).replace(regEx, "");
-function logSpiralFormula1(a, b)
-{
-	return (a === 1 ? "" : toStr(a) + " * ") + "e ^ (theta * tan(" + toStr(b) + "))";
-}
-function logSpiralFormula2(a, b)
-{
-	return (a === 1 ? "" : toStr(a) + " * ") + "e ^ (theta / tan(" + toStr(b) + "))";
-}
-function logSpiralFormula3(a, b, c)
-{
-	return (a === 1 ? "" : toStr(a) + " * ") + toStr(b) + " ^ (theta / " + toStr(c) + ")";
-}
-function roseFormula(a, b, c)
-{
-	let formula = "";
-	if (a !== 1) formula += toStr(a) + " * ";
-	formula += "cos(";
-	if (b !== 1) formula += toStr(b) + " * ";
-	formula += "theta)";
-	if (c !== 0) formula += c < 0 ? " \u2212 " + toStr(-c) : " + " + toStr(c);
-	return formula;
-}
+const oneX = n => n === 1 ? "" : toStr(n) + " * ";
+const pm0 = n => n === 0 ? "" : n < 0 ? " \u2212 " + toStr(-n) : " + " + toStr(n);
+const pm1 = n => n < 0 ? " \u2212 " + oneX(-n) : " + " + oneX(n);
 function spiralFormula(a, b, c)
 {
 	let formula = "";
@@ -551,7 +530,7 @@ function(config)
 		const radius = t => initialRadius * Math.exp(k * t);
 		config.radius = radius;
 		config.derivative = t => k * radius(t);
-		setFormula(logSpiralFormula1(initialRadius, slopeAngle));
+		setFormula(oneX(initialRadius) + "e ^ (theta * tan(" + toStr(slopeAngle) + "))");
 		growthFactor = Math.exp(k * growthAngle);
 		tangentAngle = Math.PI / 2 - slopeAngle;
 
@@ -561,7 +540,7 @@ function(config)
 		const radius = t => initialRadius * Math.exp(k * t);
 		config.radius = radius;
 		config.derivative = t => k * radius(t);
-		setFormula(logSpiralFormula2(initialRadius, tangentAngle));
+		setFormula(oneX(initialRadius) + "e ^ (theta / tan(" + toStr(tangentAngle) + "))");
 		growthFactor = Math.exp(k * growthAngle);
 		slopeAngle = Math.PI / 2 - tangentAngle;
 
@@ -570,7 +549,7 @@ function(config)
 		const radius = t => initialRadius * Math.pow(growthFactor, t / growthAngle);
 		config.radius = radius;
 		config.derivative = t => k * radius(t);
-		setFormula(logSpiralFormula3(initialRadius, growthFactor, growthAngle));
+		setFormula(oneX(initialRadius) + toStr(growthFactor) + " ^ (theta / " + toStr(growthAngle) + ")");
 		slopeAngle = Math.atan2(Math.log(growthFactor), growthAngle);
 		tangentAngle = Math.PI / 2 - slopeAngle;
 	}
@@ -601,7 +580,7 @@ function(config)
 
 	config.radius = t => scale * Math.cos(k * t) + offset;
 	config.derivative = t => scale * k * -Math.sin(k * t);
-	setFormula(roseFormula(scale, k, offset));
+	setFormula(oneX(scale) + "cos(" + oneX(k) + "theta)" + pm0(offset));
 
 	config.grid = function(svg) {
 		svg.appendChild(createSvgElem("circle", [["class", "axis"], ["cx", 0], ["cy", 0], ["r", scale]]));
@@ -638,8 +617,7 @@ function(config)
 	config.derivative = t => -a * Math.sin(n * t) * Math.pow(Math.cos(n * t), 1 / n - 1);
 
 	const nStr = toStr(n);
-	setFormula(toStr(a) + " * cos(" + nStr + " * theta) ^ (1 / " + nStr + ")" +
-		(b === 0 ? "" : " + " + toStr(b)));
+	setFormula(oneX(a) + "cos(" + nStr + " * theta) ^ (1 / " + nStr + ")" + pm0(b));
 	return config;
 }],
 "a*sin(b*t)*t+c": [["a", "b", "c"],
@@ -653,7 +631,7 @@ function(config)
 	config.radius = t => a * Math.sin(b * t) * t + c;
 	config.derivative = t => a * (Math.cos(b * t) * b * t + Math.sin(b * t));
 
-	setFormula(toStr(a) + " * sin(" + toStr(b) + " * theta) * theta" + (c === 0 ? "" : " + " + toStr(c)));
+	setFormula(oneX(a) + "sin(" + oneX(b) + "theta) * theta" + pm0(c));
 	return config;
 }],
 "a*sin(b*t)/t+c": [["a", "b", "c"],
@@ -667,7 +645,7 @@ function(config)
 	config.radius = t => a * Math.sin(b * t) / t + c;
 	config.derivative = t => a * (Math.cos(b * t) * b - Math.sin(b * t) / t) / t;
 
-	setFormula(toStr(a) + " * sin(" + toStr(b) + " * theta) / theta" + (c === 0 ? "" : " + " + toStr(c)));
+	setFormula(oneX(a) + "sin(" + oneX(b) + "theta) / theta" + pm0(c));
 	return config;
 }],
 "a*sin(b*t)*cos(c*t)+d": [["a", "b", "c", "d"],
@@ -682,8 +660,7 @@ function(config)
 	config.radius = t => a * Math.sin(b * t) * Math.cos(c * t) + d;
 	config.derivative = t => a * (b * Math.cos(b*t) * Math.cos(c*t) - c * Math.sin(b*t) * Math.sin(c*t));
 
-	setFormula(toStr(a) + " * sin(" + toStr(b) + " * theta) * cos(" + toStr(c) + " * theta)" +
-		(d === 0 ? "" : " + " + toStr(d)));
+	setFormula(oneX(a) + "sin(" + oneX(b) + "theta) * cos(" + oneX(c) + "theta)" + pm0(d));
 	return config;
 }],
 "a*t+b*cos(c*t)+d": [["a", "b", "c", "d"],
@@ -698,7 +675,7 @@ function(config)
 	config.radius = t => a * t + b * Math.cos(c * t) + d;
 	config.derivative = t => a - b * c * Math.sin(c * t);
 
-	setFormula(`${toStr(a)} * theta + ${toStr(b)} * cos(${toStr(c)} * theta) + ${toStr(d)}`);
+	setFormula(oneX(a) + "theta" + pm1(b) + "cos(" + oneX(c) + "theta)" + pm0(d));
 	return config;
 }],
 "a*t+b*sin(bt*t)+c*cos(ct*t)+d": [["a", "b", "c", "d", "bt", "ct"],
@@ -716,10 +693,9 @@ function(config)
 	config.radius = t => a * t + b * Math.sin(bt * t) + c * Math.cos(ct * t) + d;
 	config.derivative = t => a + b * bt * Math.cos(bt * t) - c * ct * Math.sin(ct * t);
 
-	setFormula(toStr(a) + " * theta" +
-		(b < 0 ? " \u2212 " + toStr(-b) : " + " + toStr(b)) + " * sin(" + toStr(bt) + " * theta)" +
-		(c < 0 ? " \u2212 " + toStr(-c) : " + " + toStr(c)) + " * cos(" + toStr(ct) + " * theta)" +
-		(d === 0 ? "" : d < 0 ? " \u2212 " + toStr(-d) : " + " + toStr(d)));
+	setFormula(oneX(a) + "theta" +
+		pm1(b) + "sin(" + oneX(bt) + "theta)" +
+		pm1(c) + "cos(" + oneX(ct) + "theta)" + pm0(d));
 	return config;
 }],
 };
@@ -729,7 +705,7 @@ function setCurve(config, key, csv)
 
 	[config.props, config.curve] = curveConfigs[key];
 
-	if (csv) parseExprList(csv, config);
+	if (csv) parseExprList(csv, config, config.props);
 }
 function parseCurve(v, config)
 {
@@ -1230,25 +1206,25 @@ numPoints = 120
 <br>morphDelay = 100ms</td>
 </tr>
 <tr>
-<td colspan="2"><a href="polar.html?r=a*t+b*sin(bt*t)+c*cos(ct*t)+d,9,36,1,0,2pi,2pi&theta=0,12pi&morph=100,50,c:-360:360">r = 9*theta
+<td colspan="2"><a href="polar.html?r=a*t+b*sin(bt*t)+c*cos(ct*t)+d,9,36,1,0,2pi,2pi&theta=0,24pi&morph=120,50,c:-360:360">r = 9*theta
 <br>&nbsp;&nbsp;&nbsp;&nbsp;+ 36*sin(2pi*theta)
 <br>&nbsp;&nbsp;&nbsp;&nbsp;+ c*cos(2pi*theta)</a>
 <div class="morph">
 <div>c =</div><div>&minus;360 &rarr;</div><div>360</div>
 </div></td>
-<td>0 - 12pi</td>
-<td>morphSteps = 100
+<td>0 - 24pi</td>
+<td>morphSteps = 120
 <br>morphDelay = 50ms</td>
 </tr>
 <tr>
-<td colspan="2"><a href="polar.html?r=a*t+b*sin(bt*t)+c*cos(ct*t)+d,9,27,-99,0,4,4&theta=0,12pi&morph=100,40,d:-360:120">r = 9*theta
-<br>&nbsp;&nbsp;&nbsp;&nbsp;+ 27*sin(4*theta)
-<br>&nbsp;&nbsp;&nbsp;&nbsp;&minus; 99*cos(4*theta) + d</a>
+<td colspan="2"><a href="polar.html?r=a*t+b*sin(bt*t)+c*cos(ct*t)+d,9,27,-99,0,8,8&theta=0,32pi&morph=210,40,d:-720:120">r = 9*theta
+<br>&nbsp;&nbsp;&nbsp;&nbsp;+ 27*sin(8*theta)
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&minus; 99*cos(8*theta) + d</a>
 <div class="morph">
-<div>d =</div><div>&minus;360 &rarr;</div><div>120</div>
+<div>d =</div><div>&minus;720 &rarr;</div><div>120</div>
 </div></td>
-<td>0 - 12pi</td>
-<td>morphSteps = 100
+<td>0 - 32pi</td>
+<td>morphSteps = 210
 <br>morphDelay = 40ms</td>
 </tr>
 </table><br>
