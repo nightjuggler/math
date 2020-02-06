@@ -367,7 +367,7 @@ function spiralFormula(a, b, c)
 function setRadialPath(path, data)
 {
 	let m = true;
-	path.setAttribute("d", Array.from(data, ([t, r]) => Number.isNaN(r) ? (m = true, "") :
+	path.setAttribute("d", data.map(([t, r]) => Number.isNaN(r) ? (m = true, "") :
 		(m ? (m = false, "M") : "L") +
 		( r * Math.cos(t)).toFixed(2) + "," +
 		(-r * Math.sin(t)).toFixed(2)).join(""));
