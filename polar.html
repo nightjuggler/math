@@ -195,30 +195,28 @@ function createSvg(config)
 		.appendChild(createSvgElem("g", [["transform", "translate(" + centerX + "," + centerY + ")"]]));
 
 	svg.appendChild(createSvgElem("line", [["class", "axis"],
-		["x1", 0], ["y1", centerY],
-		["x2", 0], ["y2", -centerY]]));
+		["x1", 0], ["y1", -centerY],
+		["x2", 0], ["y2", height - centerY]]));
 	svg.appendChild(createSvgElem("line", [["class", "axis"],
-		["x1", -centerX], ["y1", 0],
-		["x2", centerX], ["y2", 0]]));
+		["y1", 0], ["x1", -centerX],
+		["y2", 0], ["x2", width - centerX]]));
 
 	return svg;
 }
 function parseAnimate(v, config, prop)
 {
-	const [step, delay] = v.split(",");
+	const [step, delay = ""] = v.split(",");
 	const animate = {};
-	if (typeof step === "string" && /^[1-9][0-9]{0,2}$/.test(step))
-		animate.step = parseInt(step, 10);
-	if (typeof delay === "string" && /^[1-9][0-9]{1,3}$/.test(delay))
-		animate.delay = parseInt(delay, 10);
+	if (/^[1-9][0-9]{0,2}$/.test(step)) animate.step = parseInt(step, 10);
+	if (/^[1-9][0-9]{1,3}$/.test(delay)) animate.delay = parseInt(delay, 10);
 	config[prop] = animate;
 }
 function parseCenter(v, config)
 {
-	const [x, y] = v.split(",");
+	const [x, y = ""] = v.split(",");
 	const re = /^-?[1-9][0-9]{0,3}$/;
-	if (typeof x === "string" && re.test(x)) config.centerX = parseInt(x, 10);
-	if (typeof y === "string" && re.test(y)) config.centerY = parseInt(y, 10);
+	if (re.test(x)) config.centerX = parseInt(x, 10);
+	if (re.test(y)) config.centerY = parseInt(y, 10);
 }
 function parseExpr(v)
 {
