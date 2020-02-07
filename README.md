@@ -79,17 +79,27 @@ See [https://nightjuggler.com/math/goldbach.html](https://nightjuggler.com/math/
 
 ## evens_from_odds.html
 
-Visualization of the minimum number of odds > 1 (Y axis) (as calculated by the
+Graph of the minimum number of odd numbers > 1 (Y axis) (as calculated by the
 `evens_from_odds` function in `misc.py`) needed to express every even number > 4
 up to a threshold (X axis) as the sum of two odds.
 
 See [https://nightjuggler.com/math/evens_from_odds.html](https://nightjuggler.com/math/evens_from_odds.html)
+
+The minimum and maximum values of X and whether to connect the data
+points with a stepped line can be specified in the URL. For example:
+
+[https://nightjuggler.com/math/evens_from_odds.html?min=98000&max=102000&line](https://nightjuggler.com/math/evens_from_odds.html?min=98000&max=102000&line)
 
 ## prime_gaps.html
 
 Zoomable visualization of [prime gaps](https://en.wikipedia.org/wiki/Prime_gap).
 
 See [https://nightjuggler.com/math/prime_gaps.html](https://nightjuggler.com/math/prime_gaps.html)
+
+The maximum number up to which prime gaps will be shown and the modulus used
+to determine the color of the gaps can be specified in the URL. For example:
+
+[https://nightjuggler.com/math/prime_gaps.html?max=50000&mod=5](https://nightjuggler.com/math/prime_gaps.html?max=50000&mod=5)
 
 ## polar.html
 
