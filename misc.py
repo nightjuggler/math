@@ -119,6 +119,56 @@ def evens_from_odds(max_even, first_odd=3, csv=0):
 
 	return odds
 
+def evens_from_odds_recursive(max_even, depth=0, first_odd=3):
+
+	if not isinstance(max_even, int):
+		print "The max_even parameter must be an integer!"
+		return
+	if not (isinstance(depth, int) and depth >= 0):
+		print "The depth parameter must be an integer >= 0!"
+		return
+	if not (isinstance(first_odd, int) and first_odd % 2 != 0):
+		print "The first_odd parameter must be an odd integer!"
+		return
+
+	odds = []
+	first_even = first_odd * 2
+
+	def done(next_even):
+		oddsstr = "{" + ", ".join(map(str, odds)) + "}"
+		percent = "{:.2f}%".format(100.0 * len(odds) / ((next_even - 1 - first_odd) / 2))
+
+		print "Consecutive evens from", first_even, "to", next_even - 2,
+		print "can be expressed as sums of two odds from the set", oddsstr,
+		print "which has", len(odds), "elements =", percent, "of the odd numbers",
+		print "from", first_odd, "to", next_even - 3
+
+	def recurse(x, next_even, sums):
+		sums.add(x + x)
+		for n in odds[::-1]:
+			if n + x < next_even:
+				break
+			sums.add(n + x)
+
+		while next_even in sums:
+			next_even += 2
+
+		odds.append(x)
+
+		if next_even > max_even:
+			done(next_even)
+		elif depth > len(odds) or depth == 0:
+			sums = {s for s in sums if s > next_even}
+
+			for x in xrange(x + 2, next_even - first_odd + 1, 2):
+				recurse(x, next_even, sums.copy())
+		odds.pop()
+
+	t1 = time.clock()
+	recurse(first_odd, first_even, set())
+	t2 = time.clock()
+	print "Time: {:.6f}s".format(t2 - t1)
+
 def consecutive_evens(numbers, start=6):
 
 	if not isinstance(numbers, (list, tuple)):
@@ -232,6 +282,7 @@ if __name__ == "__main__":
 	main.run_command(sys.argv[1:], "square_partitions", {
 		"consecutive_evens": (consecutive_evens, [[3, 5, 9, 13, 15, 29, 33, 35, 47, 51], 6]),
 		"evens_from_odds": (evens_from_odds, [100, 3, 0]),
+		"evens_from_odds_recursive": (evens_from_odds_recursive, [100, 0, 3]),
 		"modcount": (print_mod_count, [[], 4]),
 		"naive_sieve": (naive_sieve, [10000]),
 		"read_primes": (read_primes, [1]),

@@ -79,7 +79,7 @@ See [https://nightjuggler.com/math/goldbach.html](https://nightjuggler.com/math/
 
 ## evens_from_odds.html
 
-Graph of the minimum number of odd numbers > 1 (Y axis) (as calculated by the
+Graph of the minimum &lpar;&ast;&rpar; number of odd numbers > 1 (Y axis) (as calculated by the
 `evens_from_odds` function in `misc.py`) needed to express every even number > 4
 up to a threshold (X axis) as the sum of two odds.
 
@@ -89,6 +89,11 @@ The minimum and maximum values of X and whether to connect the data
 points with a stepped line can be specified in the URL. For example:
 
 [https://nightjuggler.com/math/evens_from_odds.html?min=98000&max=102000&line](https://nightjuggler.com/math/evens_from_odds.html?min=98000&max=102000&line)
+
+&lpar;&ast;&rpar; The `evens_from_odds` function doesn't always find a minimal set of odd numbers for a
+given threshold, but it appears to come very close, and it's much faster than `evens_from_odds_recursive`
+which can find all sets (of odd numbers) that satisfy the property that every even number > 4 up to the
+threshold can be expressed as the sum of two numbers from the set.
 
 ## prime_gaps.html
 
