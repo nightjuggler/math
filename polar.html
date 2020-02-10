@@ -117,18 +117,15 @@ function handleKeyDown(event)
 {
 	if (!animation) return true;
 
-	switch (event.key || event.keyIdentifier) {
+	switch (event.key) {
 		case "ArrowLeft":
-		case "Left":
 			if (animation.timeout !== null) return true;
 			animation.update(true, true);
 			break;
 		case "ArrowRight":
-		case "Right":
 			if (animation.timeout !== null) return true;
 			animation.update(true);
 			break;
-		case "U+0020":
 		case " ":
 			if (animation.timeout !== null) {
 				clearTimeout(animation.timeout);
@@ -276,21 +273,17 @@ function parseNumber(v, len, config, prop)
 }
 function parseStroke(v)
 {
-	const m = v.match(/^(?:([A-Za-z]+)|(gradient[1-9]))?(?:,([1-9][0-9]?))?$/);
-	if (m === null) return;
-
-	let [, color, gradient, width] = m;
-	if (gradient)
-		color = "url(#" + gradient + ")";
-	if (width)
-		width += "px";
+	let [color, width = ""] = v.split(",");
+	if (/^gradient[1-9]$/.test(color))
+		color = "url(#" + color + ")";
+	else
+	if (color && !/^[A-Za-z]+$/.test(color)) return;
+	if (width && !/^[1-9][0-9]?$/.test(width)) return;
 
 	for (const rule of document.styleSheets[0].cssRules)
 		if (rule.selectorText === ".curve") {
-			if (color)
-				rule.style.setProperty("stroke", color);
-			if (width)
-				rule.style.setProperty("stroke-width", width);
+			if (color) rule.style.setProperty("stroke", color);
+			if (width) rule.style.setProperty("stroke-width", width + "px");
 			break;
 		}
 }
@@ -300,14 +293,12 @@ function parseQueryString(config, handlers)
 
 	if (typeof q !== "string" || q.charAt(0) !== "?") return;
 
-	const validKey = (key, len) => key.length <= len && /^[a-z][0-9a-z]*$/.test(key);
-
 	for (const s of q.substring(1).split("&"))
 	{
 		const i = s.indexOf("=");
 		const [key, val] = i < 0 ? [s, ""] : [s.substring(0, i), s.substring(i + 1)];
 
-		if (validKey(key, 12) && handlers.hasOwnProperty(key))
+		if (key.length <= 12 && /^[a-z]+$/.test(key) && handlers.hasOwnProperty(key))
 			handlers[key](val, config);
 	}
 }
