@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>Goldbach's Conjecture</title>
+<title>Goldbach Partitions</title>
 <style>
 body {
 	background-color: white;
@@ -23,56 +23,53 @@ table {
 #infoParent {
 	text-align: center;
 }
+#layout {
+	margin-left: auto;
+	margin-right: auto;
+}
 a {text-decoration: none;}
 </style>
 <script>
 /* globals document, window */
 (function() {
 'use strict';
-// Global Constants
+const delay = 20;
 const firstEven = 6;
-const gridHeight = 50;
-const gridWidth = 60;
-const delay = 50;
+const tdArray = [];
 
-// Global Variables
-var tableNode;
-var messageText;
+var sumCount;
+var maxSumCount = 0;
 var maxNumber;
 var primeArray;
 var primeIndex;
-var sumCount;
-var maxSumCount;
+var messageText;
 
 function fillGrid()
 {
-	var p = primeArray[primeIndex];
-	var numPrimes = primeArray.length;
+	const p = primeArray[++primeIndex];
+	const numPrimes = primeArray.length;
+	const prevMaxSums = maxSumCount;
 
-	for (var i = primeIndex; i < numPrimes; ++i)
+	for (let i = primeIndex; i < numPrimes; ++i)
 	{
-		var evenNumber = p + primeArray[i];
-		if (evenNumber > maxNumber) break;
-		var n = (evenNumber - firstEven) / 2;
+		const evenNumber = p + primeArray[i];
+		if (evenNumber > maxNumber) if (i === primeIndex) return; else break;
 
-		var row = Math.floor(n / gridWidth);
-		var col = n % gridWidth;
-
-		var numSums = ++sumCount[n];
+		const numSums = ++sumCount[(evenNumber - firstEven) / 2];
 		if (numSums > maxSumCount)
 			maxSumCount = numSums;
-
-		var td = tableNode.children[row].children[col];
-		td.title = evenNumber + ' (' + numSums + ')';
-
-		var hue = Math.floor(numSums * 1.4);
-		td.style.backgroundColor = 'hsl(' + hue + ',100%,50%)';
 	}
 
-	messageText.nodeValue = 'p[' + primeIndex + '] = ' + p + ', maxSumCount = ' + maxSumCount;
+	if (prevMaxSums !== maxSumCount)
+	tdArray.forEach((td, i) => {
+		const numSums = sumCount[i];
+		const hue = (300 * numSums / maxSumCount).toFixed(1);
+		td.title = (firstEven + 2 * i) + ' (' + numSums + ')';
+		td.style.backgroundColor = 'hsl(' + hue + ',100%,50%)';
+	});
 
-	if (i > primeIndex++)
-		window.setTimeout(fillGrid, delay);
+	messageText.nodeValue = 'p[' + primeIndex + '] = ' + p + ', maxSumCount = ' + maxSumCount;
+	window.setTimeout(fillGrid, delay);
 }
 function getPrimes(maxNumber)
 {
@@ -91,7 +88,7 @@ function getPrimes(maxNumber)
 			primes.push(n);
 	return primes;
 }
-function createTable(numRows, numCols, even)
+function createTable(numRows, numCols)
 {
 	const table = document.createElement('table');
 	for (let i = 0; i < numRows; ++i)
@@ -100,30 +97,31 @@ function createTable(numRows, numCols, even)
 		for (let j = 0; j < numCols; ++j)
 		{
 			const td = document.createElement('td');
-			td.title = even += 2;
 			tr.appendChild(td);
+			tdArray.push(td);
 		}
 		table.appendChild(tr);
 	}
-	return table;
+	document.getElementById('gridParent').appendChild(table);
 }
 function init()
 {
-	tableNode = createTable(gridHeight, gridWidth, firstEven - 2);
-	document.getElementById('gridParent').appendChild(tableNode);
+	const gridWidth = 60;
+	const gridHeight = 60;
+
+	createTable(gridHeight, gridWidth);
 
 	messageText = document.createTextNode('');
 	document.getElementById('infoParent').appendChild(messageText);
 
 	sumCount = new Uint16Array(gridWidth * gridHeight);
-	maxSumCount = 0;
 	maxNumber = firstEven - 2 + 2 * gridWidth * gridHeight;
 
 	document.getElementById('minEven').firstChild.nodeValue = firstEven;
 	document.getElementById('maxEven').firstChild.nodeValue = maxNumber;
 
 	primeArray = getPrimes(maxNumber);
-	primeIndex = 1;
+	primeIndex = 0;
 
 	window.setTimeout(fillGrid, delay);
 }
@@ -133,7 +131,7 @@ window.addEventListener('DOMContentLoaded', init);
 </head>
 <body>
 
-<table>
+<table id="layout">
 <tr>
 <th>The number of
 <a href="https://en.wikipedia.org/wiki/Goldbach%27s_conjecture">Goldbach partitions</a>
