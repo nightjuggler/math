@@ -178,17 +178,17 @@ function parseQueryString(config, handlers, flags)
 function getPrimes(maxNumber)
 {
 	const arrayLen = maxNumber + 1;
-	const isPrime = new Uint8Array(arrayLen);
+	const notPrime = new Uint8Array(arrayLen);
 	const sqrt = Math.floor(Math.sqrt(maxNumber));
 
-	for (var n = 3; n <= sqrt; n += 2)
-		if (isPrime[n] === 0)
-			for (var i = n * n, step = n * 2; i < arrayLen; i += step)
-				isPrime[i] = 1;
+	for (let n = 3; n <= sqrt; n += 2)
+		if (notPrime[n] === 0)
+			for (let i = n * n, step = n * 2; i < arrayLen; i += step)
+				notPrime[i] = 1;
 
 	const primes = [2];
-	for (n = 3; n < arrayLen; n += 2)
-		if (isPrime[n] === 0)
+	for (let n = 3; n < arrayLen; n += 2)
+		if (notPrime[n] === 0)
 			primes.push(n);
 	return primes;
 }
