@@ -11,23 +11,29 @@ body {
 }
 table {
 	border-collapse: collapse;
-	border: 1px solid black;
 }
-td {
+#gridParent table {
+	border: 1px solid #000000;
+}
+#gridParent td {
 	width: 8px;
 	height: 8px;
 	border: 1px solid #dddddd;
 }
+#infoParent {
+	text-align: center;
+}
 a {text-decoration: none;}
 </style>
 <script>
-/* globals document, setTimeout, window */
+/* globals document, window */
 (function() {
 'use strict';
 // Global Constants
-var firstEven = 6;
-var gridHeight = 50;
-var gridWidth = 60;
+const firstEven = 6;
+const gridHeight = 50;
+const gridWidth = 60;
+const delay = 50;
 
 // Global Variables
 var tableNode;
@@ -66,7 +72,7 @@ function fillGrid()
 	messageText.nodeValue = 'p[' + primeIndex + '] = ' + p + ', maxSumCount = ' + maxSumCount;
 
 	if (i > primeIndex++)
-		setTimeout(fillGrid, 100);
+		window.setTimeout(fillGrid, delay);
 }
 function getPrimes(maxNumber)
 {
@@ -87,13 +93,13 @@ function getPrimes(maxNumber)
 }
 function createTable(numRows, numCols, even)
 {
-	var table = document.createElement('table');
-	for (var i = 0; i < numRows; ++i)
+	const table = document.createElement('table');
+	for (let i = 0; i < numRows; ++i)
 	{
-		var tr = document.createElement('tr');
-		for (var j = 0; j < numCols; ++j)
+		const tr = document.createElement('tr');
+		for (let j = 0; j < numCols; ++j)
 		{
-			var td = document.createElement('td');
+			const td = document.createElement('td');
 			td.title = even += 2;
 			tr.appendChild(td);
 		}
@@ -104,18 +110,22 @@ function createTable(numRows, numCols, even)
 function init()
 {
 	tableNode = createTable(gridHeight, gridWidth, firstEven - 2);
-	document.getElementById('gridContainer').appendChild(tableNode);
+	document.getElementById('gridParent').appendChild(tableNode);
 
 	messageText = document.createTextNode('');
-	document.getElementById('messageDiv').appendChild(messageText);
+	document.getElementById('infoParent').appendChild(messageText);
 
 	sumCount = new Uint16Array(gridWidth * gridHeight);
 	maxSumCount = 0;
 	maxNumber = firstEven - 2 + 2 * gridWidth * gridHeight;
+
+	document.getElementById('minEven').firstChild.nodeValue = firstEven;
+	document.getElementById('maxEven').firstChild.nodeValue = maxNumber;
+
 	primeArray = getPrimes(maxNumber);
 	primeIndex = 1;
 
-	setTimeout(fillGrid, 100);
+	window.setTimeout(fillGrid, delay);
 }
 window.addEventListener('DOMContentLoaded', init);
 })();
@@ -123,9 +133,18 @@ window.addEventListener('DOMContentLoaded', init);
 </head>
 <body>
 
-<a href="https://en.wikipedia.org/wiki/Goldbach%27s_conjecture">Goldbach's conjecture</a>,
-<span id="messageDiv"></span>
-<div id="gridContainer"></div>
+<table>
+<tr>
+<th>The number of
+<a href="https://en.wikipedia.org/wiki/Goldbach%27s_conjecture">Goldbach partitions</a>
+for every even number from
+<span id="minEven">6</span> to
+<span id="maxEven">6004</span>
+</th>
+</tr>
+<tr><td id="gridParent"></td></tr>
+<tr><td id="infoParent"></td></tr>
+</table>
 
 </body>
 </html>
