@@ -11,6 +11,8 @@ body {
 }
 table {
 	border-collapse: collapse;
+	margin-left: auto;
+	margin-right: auto;
 }
 #gridParent table {
 	border: 1px solid #000000;
@@ -23,52 +25,106 @@ table {
 #infoParent {
 	text-align: center;
 }
-#layout {
-	margin-left: auto;
-	margin-right: auto;
-}
 a {text-decoration: none;}
 </style>
 <script>
 /* globals document, window */
 (function() {
 'use strict';
-const delay = 20;
-const firstEven = 6;
-const tdArray = [];
+const gradient1 = [
+	[ 44, 123, 182],
+	[  0, 166, 202],
+	[  0, 204, 188],
+	[144, 235, 157],
+	[255, 255, 140],
+	[249, 208,  87],
+	[242, 158,  46],
+	[231, 104,  24],
+	[215,  25,  28],
+];
+const gradient2 = [
+	[215,  25,  28],
+	[231, 104,  24],
+	[242, 158,  46],
+	[249, 208,  87],
+	[255, 255, 140],
+	[144, 235, 157],
+	[  0, 204, 188],
+	[  0, 166, 202],
+	[ 44, 123, 182],
+];
+const gradient3 = [
+	[255,   0,   0],
+	[255, 255,   0],
+	[  0, 255,   0],
+	[  0, 255, 255],
+	[  0,   0, 255],
+	[255,   0, 255],
+];
+const hsl = h => 'hsl(' + Math.round(h) + ',100%,50%)';
+const rgb = (r, g, b) => 'rgb(' + Math.round(r) + ',' + Math.round(g) + ',' + Math.round(b) + ')';
 
-var sumCount;
-var maxSumCount = 0;
-var maxNumber;
+function gradientColor(gradient, percent)
+{
+	const n = gradient.length - 1;
+	const q = percent * n;
+	const i = Math.floor(q);
+
+	if (i >= n) return rgb(...gradient[n]);
+
+	const [r1, g1, b1] = gradient[i];
+	const [r2, g2, b2] = gradient[i + 1];
+
+	percent = q - i;
+	return rgb(
+		r1 + percent * (r2 - r1),
+		g1 + percent * (g2 - g1),
+		b1 + percent * (b2 - b1));
+}
+const colorFunctions = [
+	p => hsl(300 * p),
+	p => hsl(p < 0.5 ? 400 * p : 100 + 200 * p),
+	p => gradientColor(gradient1, p),
+	p => gradientColor(gradient2, p),
+	p => gradientColor(gradient3, p),
+];
+var delay = 20;
+var getColor = colorFunctions[0];
+var minEven = 6;
+var maxEven;
+var numSums;
+var maxSums = 0;
 var primeArray;
 var primeIndex;
-var messageText;
+var infoText;
+var gridNodes = [];
 
 function fillGrid()
 {
 	const p = primeArray[++primeIndex];
 	const numPrimes = primeArray.length;
-	const prevMaxSums = maxSumCount;
+	const prevMaxSums = maxSums;
 
-	for (let i = primeIndex; i < numPrimes; ++i)
+	for (let i = primeIndex; i < numPrimes; i += 1)
 	{
-		const evenNumber = p + primeArray[i];
-		if (evenNumber > maxNumber) if (i === primeIndex) return; else break;
+		const even = p + primeArray[i];
+		if (even > maxEven)
+			if (i === primeIndex) return; else break;
 
-		const numSums = ++sumCount[(evenNumber - firstEven) / 2];
-		if (numSums > maxSumCount)
-			maxSumCount = numSums;
+		const sums = numSums[(even - minEven) / 2] += 1;
+		if (sums > maxSums)
+			maxSums = sums;
 	}
 
-	if (prevMaxSums !== maxSumCount)
-	tdArray.forEach((td, i) => {
-		const numSums = sumCount[i];
-		const hue = (300 * numSums / maxSumCount).toFixed(1);
-		td.title = (firstEven + 2 * i) + ' (' + numSums + ')';
-		td.style.backgroundColor = 'hsl(' + hue + ',100%,50%)';
-	});
+	if (prevMaxSums !== maxSums)
+		gridNodes.forEach((node, i) => {
+			const sums = numSums[i];
+			const even = minEven + 2 * i;
+			node.title = `${even} (${sums})`;
+			node.style.backgroundColor = getColor(sums / maxSums);
+		});
 
-	messageText.nodeValue = 'p[' + primeIndex + '] = ' + p + ', maxSumCount = ' + maxSumCount;
+	infoText.nodeValue = `p[${primeIndex}] = ${p}, maxSums = ${maxSums}`;
 	window.setTimeout(fillGrid, delay);
 }
 function getPrimes(maxNumber)
@@ -88,6 +144,48 @@ function getPrimes(maxNumber)
 			primes.push(n);
 	return primes;
 }
+const parseNumber = (v, maxLen) =>
+	v.length <= maxLen && /^[1-9][0-9]*$/.test(v) ? parseInt(v, 10) : 0;
+function parseColor(v)
+{
+	if ((v = parseNumber(v, 1)) > 0 && --v < colorFunctions.length)
+		getColor = colorFunctions[v];
+}
+function parseDelay(v)
+{
+	if ((v = parseNumber(v, 4)) > 0)
+		delay = v;
+}
+function parseFirst(v)
+{
+	if ((v = parseNumber(v, 5)) > 0 && v % 2 === 0)
+		minEven = v;
+}
+function parseSize(v, config)
+{
+	if ((v = v.split('x')).length !== 2) return;
+	let [w, h] = v;
+	if ((w = parseNumber(w, 4)) === 0) return;
+	if ((h = parseNumber(h, 4)) === 0) return;
+	if (w * h > 100000) return;
+	config.gridWidth = w;
+	config.gridHeight = h;
+}
+function parseQueryString(config, handlers)
+{
+	const q = window.location.search;
+
+	if (typeof q !== 'string' || q.charAt(0) !== '?') return;
+
+	for (const s of q.substring(1).split('&'))
+	{
+		const i = s.indexOf('=');
+		const [key, val] = i < 0 ? [s, ''] : [s.substring(0, i), s.substring(i + 1)];
+
+		if (key.length <= 12 && /^[a-z]+$/.test(key) && handlers.hasOwnProperty(key))
+			handlers[key](val, config);
+	}
+}
 function createTable(numRows, numCols)
 {
 	const table = document.createElement('table');
@@ -98,29 +196,36 @@ function createTable(numRows, numCols)
 		{
 			const td = document.createElement('td');
 			tr.appendChild(td);
-			tdArray.push(td);
+			gridNodes.push(td);
 		}
 		table.appendChild(tr);
 	}
-	document.getElementById('gridParent').appendChild(table);
+	return table;
 }
 function init()
 {
-	const gridWidth = 60;
-	const gridHeight = 60;
+	const config = {
+		gridWidth: 60,
+		gridHeight: 60,
+	};
+	parseQueryString(config, {
+		color: parseColor,
+		delay: parseDelay,
+		first: parseFirst,
+		size: parseSize,
+	});
 
-	createTable(gridHeight, gridWidth);
+	const {gridWidth, gridHeight} = config;
+	numSums = new Uint16Array(gridWidth * gridHeight);
+	maxEven = minEven - 2 + 2 * gridWidth * gridHeight;
 
-	messageText = document.createTextNode('');
-	document.getElementById('infoParent').appendChild(messageText);
+	document.getElementById('minEven').appendChild(document.createTextNode(minEven));
+	document.getElementById('maxEven').appendChild(document.createTextNode(maxEven));
 
-	sumCount = new Uint16Array(gridWidth * gridHeight);
-	maxNumber = firstEven - 2 + 2 * gridWidth * gridHeight;
+	document.getElementById('gridParent').appendChild(createTable(gridHeight, gridWidth));
+	document.getElementById('infoParent').appendChild(infoText = document.createTextNode(''));
 
-	document.getElementById('minEven').firstChild.nodeValue = firstEven;
-	document.getElementById('maxEven').firstChild.nodeValue = maxNumber;
-
-	primeArray = getPrimes(maxNumber);
+	primeArray = getPrimes(maxEven);
 	primeIndex = 0;
 
 	window.setTimeout(fillGrid, delay);
@@ -136,8 +241,8 @@ window.addEventListener('DOMContentLoaded', init);
 <th>The number of
 <a href="https://en.wikipedia.org/wiki/Goldbach%27s_conjecture">Goldbach partitions</a>
 for every even number from
-<span id="minEven">6</span> to
-<span id="maxEven">6004</span>
+<span id="minEven"></span> to
+<span id="maxEven"></span>
 </th>
 </tr>
 <tr><td id="gridParent"></td></tr>

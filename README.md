@@ -72,10 +72,16 @@ Further observations (verified for all evens up to 50 million):
 
 ## goldbach.html
 
-Visualization of patterns in the number of [Goldbach partitions](https://en.wikipedia.org/wiki/Goldbach%27s_comet)
-for each even number from 6 to 6004.
+Visualization of patterns in the number of [Goldbach partitions](https://en.wikipedia.org/wiki/Goldbach%27s_comet).
 
 See [https://nightjuggler.com/math/goldbach.html](https://nightjuggler.com/math/goldbach.html)
+
+By default, a 60x60 grid is created. Each square in the grid represents an even number from 6 to 7204
+(4 + 2 x 60 x 60). The grid dimensions, the first even number (corresponding to the top-left square),
+the timeout delay (in milliseconds), and the coloring function (a number from 1 to 5) can be specified
+in the URL. For example:
+
+[https://nightjuggler.com/math/goldbach.html?size=105x40&first=1000&color=3](https://nightjuggler.com/math/goldbach.html?size=105x40&first=1000&color=3)
 
 ## evens_from_odds.html
 
