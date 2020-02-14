@@ -7,14 +7,14 @@
 body {
 	background-color: white;
 	font-family: verdana;
-	font-size: 10pt;
+	font-size: 12pt;
 }
 a {
 	text-decoration: none;
 }
 input {
 	font-family: verdana;
-	font-size: 10pt;
+	font-size: 12pt;
 	margin-top: 2px;
 	margin-bottom: 2px;
 }
@@ -36,6 +36,9 @@ input {
 }
 #paramTable td:first-child {
 	text-align: right;
+}
+#examples ul {
+	margin-top: 0;
 }
 @keyframes spinDiscAnimation {
 	from { transform: rotateZ(0deg); }
@@ -65,8 +68,9 @@ input {
 <script>
 /* globals document, window */
 /* globals HTMLInputElement, HTMLSelectElement */
+(function() {
 "use strict";
-var global = {
+const global = {
 	centerX: -0.6,
 	centerY: 0,
 	width: 3,
@@ -104,6 +108,7 @@ function inSet(zx, zy, cx, cy, n)
 //	i += 1 - Math.log(Math.log(zx2 + zy2)) / Math.LN2;
 	return i;
 }
+/*
 function setRGBfromHSV(d, i, h, s, v)
 {
 	h /= 60;
@@ -133,6 +138,7 @@ function setRGBfromHSV(d, i, h, s, v)
 	d[i+2] = 255 * (b + m);
 	d[i+3] = 255;
 }
+*/
 function setRGB(d, i, iterationCount)
 {
 	if (iterationCount === null) {
@@ -322,8 +328,8 @@ function redraw(event)
 function setCenter(event)
 {
 	var c = global.canvas;
-	var x = event.clientX - c.clientLeft - c.offsetLeft;
-	var y = event.clientY - c.clientTop - c.offsetTop;
+	var x = event.clientX - c.clientLeft - c.offsetLeft + window.scrollX;
+	var y = event.clientY - c.clientTop - c.offsetTop + window.scrollY;
 
 	global.centerX += global.width * (x/c.width - 0.5);
 	global.centerY += global.width / global.widthHeightRatio * (0.5 - y/c.height);
@@ -360,9 +366,7 @@ function documentKeyDown(event)
 	if (event.target instanceof HTMLInputElement ||
 		event.target instanceof HTMLSelectElement) return true;
 
-	var key = event.key || event.keyIdentifier;
-
-	switch (key)
+	switch (event.key)
 	{
 	case "i":
 	case "U+0049":
@@ -373,19 +377,15 @@ function documentKeyDown(event)
 		zoomOut();
 		break;
 	case "ArrowLeft":
-	case "Left":
 		global.centerX -= global.width * global.pixelShift / global.canvas.width;
 		break;
 	case "ArrowRight":
-	case "Right":
 		global.centerX += global.width * global.pixelShift / global.canvas.width;
 		break;
 	case "ArrowDown":
-	case "Down":
 		global.centerY -= global.width * global.pixelShift / global.canvas.width;
 		break;
 	case "ArrowUp":
-	case "Up":
 		global.centerY += global.width * global.pixelShift / global.canvas.width;
 		break;
 	default:
@@ -394,15 +394,16 @@ function documentKeyDown(event)
 
 	return redraw(event);
 }
+const _parseFloat = v =>
+	/^-?(?:0|[1-9][0-9]{0,2})(?:\.[0-9]{1,15})?$/.test(v) ? parseFloat(v) : null;
 function parseXY(v, name)
 {
-	var m = v.match(/^(-?(?:0|[1-9][0-9]{0,2})(?:\.[0-9]{1,15})?),(-?(?:0|[1-9][0-9]{0,2})(?:\.[0-9]{1,15})?)$/);
-
-	if (m === null) return false;
-
-	global[name + "X"] = parseFloat(m[1]);
-	global[name + "Y"] = parseFloat(m[2]);
-	return true;
+	if ((v = v.split(",")).length !== 2) return;
+	let [x, y] = v;
+	if ((x = _parseFloat(x)) === null) return;
+	if ((y = _parseFloat(y)) === null) return;
+	global[name + "X"] = x;
+	global[name + "Y"] = y;
 }
 function parseCenter(v)
 {
@@ -415,55 +416,32 @@ function parseConstant(v)
 }
 function parseMaxIteration(v)
 {
-	if (v.match(/^[1-9][0-9]{0,4}$/) === null) return;
-
-	global.maxIteration = parseInt(v, 10);
+	if (v.length <= 5 && /^[1-9][0-9]*$/.test(v))
+		global.maxIteration = parseInt(v, 10);
 }
 function parseWidth(v)
 {
-	if (v.match(/^(?:0|[1-9][0-9]{0,2})(?:\.[0-9]{1,15})?$/) === null) return;
-
-	global.width = parseFloat(v);
+	if ((v = _parseFloat(v)) !== null && v > 0)
+		global.width = v;
 }
 function parseZoom(v)
 {
-	if (v.match(/^[1-9][0-9]?(?:\.[0-9]{1,2})?$/) === null) return;
-
-	global.zoom = parseFloat(v);
+	if (/^[1-9][0-9]?(?:\.[0-9]{1,2})?$/.test(v))
+		global.zoom = parseFloat(v);
 }
-function isValidId(s, n)
+function parseQueryString(handlers)
 {
-	return s.length <= n && s.match(/^[a-z][_0-9a-z]*$/) !== null;
-}
-function parseQueryString()
-{
-	var q = window.location.search;
+	const q = window.location.search;
 
-	if (typeof q !== 'string' || q.charAt(0) !== '?') return;
+	if (typeof q !== "string" || q.charAt(0) !== "?") return;
 
-	var flags = {
-	};
-	var handlers = {
-		c: parseConstant,
-		i: parseMaxIteration,
-		o: parseCenter,
-		w: parseWidth,
-		z: parseZoom,
-	};
-
-	for (var s of q.substr(1).split('&'))
+	for (const s of q.substring(1).split("&"))
 	{
-		var i = s.indexOf('=');
-		if (i < 0 && isValidId(s, 3) && flags[s]) {
-			global[flags[s]] = true;
-			continue;
-		}
-		if (i < 1 || i === s.length - 1) continue;
-		var k = s.substr(0, i);
-		var v = s.substr(i + 1);
+		const i = s.indexOf("=");
+		const [key, val] = i < 0 ? [s, ""] : [s.substring(0, i), s.substring(i + 1)];
 
-		if (isValidId(k, 3) && handlers[k])
-			handlers[k](v);
+		if (key.length <= 1 && /^[a-z]+$/.test(key) && handlers.hasOwnProperty(key))
+			handlers[key](val);
 	}
 }
 function init()
@@ -472,7 +450,13 @@ function init()
 	global.context = global.canvas.getContext("2d");
 	global.widthHeightRatio = global.canvas.width / global.canvas.height;
 
-	parseQueryString();
+	parseQueryString({
+		c: parseConstant,
+		i: parseMaxIteration,
+		o: parseCenter,
+		w: parseWidth,
+		z: parseZoom,
+	});
 
 	switch (9)
 	{
@@ -555,40 +539,27 @@ function init()
 	document.getElementById("widthField").value = global.width;
 	document.getElementById("maxIterationField").value = global.maxIteration;
 
-	global.canvas.addEventListener("click", canvasClick, false);
-	document.addEventListener("keydown", documentKeyDown, false);
+	global.canvas.addEventListener("click", canvasClick);
+	document.addEventListener("keydown", documentKeyDown);
 }
-window.addEventListener("DOMContentLoaded", init, false);
+window.addEventListener("DOMContentLoaded", init);
+})();
 </script>
 </head>
 <body>
 
 <canvas id="canvas" width="900" height="600"></canvas>
-<div id="controlDiv">
-<table id="paramTable">
-<tr>
-<td>Constant:</td>
-<td><input type="text" id="constantX" size="20" />,<input type="text" id="constantY" size="20" /></td>
-</tr>
-<tr>
-<td>Center:</td>
-<td><input type="text" id="centerX" size="20" />,<input type="text" id="centerY" size="20" /></td>
-</tr>
-<tr>
-<td>Width:</td>
-<td><input type="text" id="widthField" size="20" /></td>
-</tr>
-<tr>
-<td>Max Iteration:</td>
-<td><input type="text" id="maxIterationField" size="5" /></td>
-</tr>
-</table>
-<div id="spinDisc"></div>
-</div>
-<div>
-Examples:
-<ul style="margin-top: 0;">
 
+<ul>
+<li>Click to set the center.
+<li>Double click to set the center and zoom in.
+<li>Press &quot;i&quot; to zoom in.
+<li>Press &quot;o&quot; to zoom out.
+<li>Use the arrow keys to move 50 pixels left, right, up, or down.
+</ul>
+
+<div id="examples">Examples:
+<ul>
 <li><a href="jams.html?o=-1.2025,-0.1617&w=0.005&i=512">Mandelbrot set:
 	center=-1.2025,-0.1617 / width=0.005 / maxIteration=512</a>
 
@@ -613,6 +584,32 @@ Examples:
 <li><a href="jams.html?c=-0.214,0.789&o=0.25,-0.767&w=3.5&i=256">Julia set:
 	constant=-0.214,0.789 / center=0.25,-0.767 / width=3.5 / maxIteration=256</a>
 </ul>
+</div>
+
+<div id="controlDiv">
+<table id="paramTable">
+<tr>
+<td>Constant:</td>
+<td>
+<input type="text" id="constantX" size="20" disabled />,
+<input type="text" id="constantY" size="20" disabled /></td>
+</tr>
+<tr>
+<td>Center:</td>
+<td>
+<input type="text" id="centerX" size="20" disabled />,
+<input type="text" id="centerY" size="20" disabled /></td>
+</tr>
+<tr>
+<td>Width:</td>
+<td><input type="text" id="widthField" size="20" disabled /></td>
+</tr>
+<tr>
+<td>Max Iteration:</td>
+<td><input type="text" id="maxIterationField" size="5" disabled /></td>
+</tr>
+</table>
+<div id="spinDisc"></div>
 </div>
 
 </body>
