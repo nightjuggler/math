@@ -67,7 +67,7 @@ input {
 </style>
 <script>
 /* globals document, window */
-/* globals HTMLInputElement, HTMLSelectElement */
+/* globals HTMLInputElement */
 (function() {
 "use strict";
 const global = {
@@ -80,7 +80,6 @@ const global = {
 	isJulia: false,
 	constantX: 0,
 	constantY: 0,
-	kernel: [0, 1, 0, 1, 2, 1, 0, 1, 0],
 	clickTimeout: 0,
 	drawing: false,
 };
@@ -104,8 +103,6 @@ function inSet(zx, zy, cx, cy, n)
 		zx2 = zx*zx;
 		zy2 = zy*zy;
 	}
-
-//	i += 1 - Math.log(Math.log(zx2 + zy2)) / Math.LN2;
 	return i;
 }
 function setRGB(d, i, iterationCount)
@@ -151,63 +148,33 @@ function setRGB(d, i, iterationCount)
 	}
 	d[i+3] = 255;
 }
-function computeJulia(imageData, minX, maxY)
+function computeJulia(d, w, h, minX, maxY, step, n)
 {
-	var d = imageData.data;
-	var w = imageData.width;
-	var h = imageData.height;
-
-	var i = 0;
-	var n = global.maxIteration;
 	var cx = global.constantX;
 	var cy = global.constantY;
-	var step = global.width / (w - 1);
 
-	for (var y = h, zy = maxY; y !== 0; y -= 1, zy -= step)
+	for (var y = h, zy = maxY, i = 0; y !== 0; y -= 1, zy -= step)
 		for (var x = w, zx = minX; x !== 0; x -= 1, zx += step, i += 4)
 			setRGB(d, i, inSet(zx, zy, cx, cy, n));
 }
-function computeMandelbrot(imageData, minX, maxY)
+function computeMandelbrot(d, w, h, minX, maxY, step, n)
 {
-	var d = imageData.data;
-	var w = imageData.width;
-	var h = imageData.height;
-
-	var i = 0;
-	var n = global.maxIteration;
-	var step = global.width / (w - 1);
-
-	for (var y = h, zy = maxY; y !== 0; y -= 1, zy -= step)
+	for (var y = h, zy = maxY, i = 0; y !== 0; y -= 1, zy -= step)
 		for (var x = w, zx = minX; x !== 0; x -= 1, zx += step, i += 4)
 			setRGB(d, i, inSet(0, 0, zx, zy, n));
 }
-function convolve3x3(context, inData, channels, kernel, abs)
+function convolve3x3(s, d, width, height)
 {
-	var setR = (channels & 1) === 1;
-	var setG = (channels & 2) === 2;
-	var setB = (channels & 4) === 4;
-
-	var outData = context.createImageData(inData);
-	var s = inData.data;
-	var d = outData.data;
-
-	var width = inData.width;
-	var height = inData.height;
-
-	var sumOfWeights = 0;
-	for (var weight of kernel)
-		sumOfWeights += weight;
-	if (sumOfWeights === 0)
-		sumOfWeights = 1;
-
-	// edgeMode is 'duplicate'
-
 	var yDelta = width * 4;
 	var i0, i1, i2, i3, i5, i6, i7, i8;
 
-	var k0 = kernel[0], k1 = kernel[1], k2 = kernel[2];
-	var k3 = kernel[3], k4 = kernel[4], k5 = kernel[5];
-	var k6 = kernel[6], k7 = kernel[7], k8 = kernel[8];
+	var k0 = 0, k1 = 1, k2 = 0;
+	var k3 = 1, k4 = 2, k5 = 1;
+	var k6 = 0, k7 = 1, k8 = 0;
+
+	var sumOfWeights = k0 + k1 + k2 + k3 + k4 + k5 + k6 + k7 + k8;
+	if (sumOfWeights === 0)
+		sumOfWeights = 1;
 
 	var i = 0;
 	for (var y = 0; y < height; ++y)
@@ -252,34 +219,32 @@ function convolve3x3(context, inData, channels, kernel, abs)
 				g /= sumOfWeights;
 				b /= sumOfWeights;
 			}
-			if (abs) {
-				r = Math.abs(r);
-				g = Math.abs(g);
-				b = Math.abs(b);
-			}
-			d[i  ] = setR ? r : s[i  ];
-			d[i+1] = setG ? g : s[i+1];
-			d[i+2] = setB ? b : s[i+2];
+			d[i  ] = r;
+			d[i+1] = g;
+			d[i+2] = b;
 			d[i+3] = s[i+3];
 			i += 4;
 		}
 	}
-
-	return outData;
 }
 function computeFractal()
 {
-	var minX = global.centerX - global.width / 2;
-	var maxY = global.centerY + global.width / 2 / global.widthHeightRatio;
+	const minX = global.centerX - global.width / 2;
+	const maxY = global.centerY + global.width / 2 / global.widthHeightRatio;
 
-	var imageData = global.context.createImageData(global.canvas.width, global.canvas.height);
+	const img1 = global.imageData1;
+	const img2 = global.imageData2;
+	const w = img1.width;
+	const h = img1.height;
+	const step = global.width / (w - 1);
+	const n = global.maxIteration;
 
-	(global.isJulia ? computeJulia : computeMandelbrot)(imageData, minX, maxY);
+	(global.isJulia ? computeJulia : computeMandelbrot)(img1.data, w, h, minX, maxY, step, n);
 
-	imageData = convolve3x3(global.context, imageData, 7, global.kernel, false);
-	global.context.putImageData(imageData, 0, 0);
+	convolve3x3(img1.data, img2.data, w, h);
+	global.context.putImageData(img2, 0, 0);
 
-	var spinDisc = document.getElementById("spinDisc");
+	const spinDisc = document.getElementById("spinDisc");
 	spinDisc.style.animationPlayState = "paused";
 	spinDisc.style.display = "none";
 
@@ -287,7 +252,7 @@ function computeFractal()
 }
 function draw()
 {
-	var spinDisc = document.getElementById("spinDisc");
+	const spinDisc = document.getElementById("spinDisc");
 	spinDisc.style.animationPlayState = "running";
 	spinDisc.style.display = "block";
 
@@ -298,9 +263,9 @@ function draw()
 }
 function setCenter(event)
 {
-	var c = global.canvas;
-	var x = event.clientX - c.clientLeft - c.offsetLeft + window.scrollX;
-	var y = event.clientY - c.clientTop - c.offsetTop + window.scrollY;
+	const c = global.canvas;
+	const x = event.clientX - c.clientLeft - c.offsetLeft + window.scrollX;
+	const y = event.clientY - c.clientTop - c.offsetTop + window.scrollY;
 
 	global.centerX += global.width * (x/c.width - 0.5);
 	global.centerY += global.width / global.widthHeightRatio * (0.5 - y/c.height);
@@ -337,8 +302,7 @@ function canvasClick(event)
 }
 function documentKeyDown(event)
 {
-	if (event.target instanceof HTMLInputElement ||
-		event.target instanceof HTMLSelectElement) return true;
+	if (event.target instanceof HTMLInputElement) return true;
 
 	switch (event.key)
 	{
@@ -427,10 +391,6 @@ function parseQueryString(handlers)
 }
 function init()
 {
-	global.canvas = document.getElementById("canvas");
-	global.context = global.canvas.getContext("2d");
-	global.widthHeightRatio = global.canvas.width / global.canvas.height;
-
 	parseQueryString({
 		c: parseConstant,
 		i: parseMaxIteration,
@@ -438,6 +398,17 @@ function init()
 		w: parseWidth,
 		z: parseZoom,
 	});
+
+	const canvas = document.getElementById("canvas");
+	const context = canvas.getContext("2d");
+	const {width, height} = canvas;
+
+	global.imageData1 = context.createImageData(width, height);
+	global.imageData2 = context.createImageData(width, height);
+
+	global.canvas = canvas;
+	global.context = context;
+	global.widthHeightRatio = width / height;
 
 	draw();
 
@@ -448,7 +419,7 @@ function init()
 	document.getElementById("widthField").value = global.width;
 	document.getElementById("maxIterationField").value = global.maxIteration;
 
-	global.canvas.addEventListener("click", canvasClick);
+	canvas.addEventListener("click", canvasClick);
 	document.addEventListener("keydown", documentKeyDown);
 }
 window.addEventListener("DOMContentLoaded", init);
