@@ -148,6 +148,16 @@ function setRGB(d, i, iterationCount)
 	}
 	d[i+3] = 255;
 }
+function recomputeJulia(d, w, h, minX, maxY, step, n)
+{
+	var cx = global.constantX;
+	var cy = global.constantY;
+
+	for (var y = h, zy = maxY, i = 0; y !== 0; y -= 1, zy -= step)
+		for (var x = w, zx = minX; x !== 0; x -= 1, zx += step, i += 4)
+			if (d[i] === 0 && d[i+1] === 0 && d[i+2] === 0)
+				setRGB(d, i, inSet(zx, zy, cx, cy, n));
+}
 function computeJulia(d, w, h, minX, maxY, step, n)
 {
 	var cx = global.constantX;
@@ -156,6 +166,13 @@ function computeJulia(d, w, h, minX, maxY, step, n)
 	for (var y = h, zy = maxY, i = 0; y !== 0; y -= 1, zy -= step)
 		for (var x = w, zx = minX; x !== 0; x -= 1, zx += step, i += 4)
 			setRGB(d, i, inSet(zx, zy, cx, cy, n));
+}
+function recomputeMandelbrot(d, w, h, minX, maxY, step, n)
+{
+	for (var y = h, zy = maxY, i = 0; y !== 0; y -= 1, zy -= step)
+		for (var x = w, zx = minX; x !== 0; x -= 1, zx += step, i += 4)
+			if (d[i] === 0 && d[i+1] === 0 && d[i+2] === 0)
+				setRGB(d, i, inSet(0, 0, zx, zy, n));
 }
 function computeMandelbrot(d, w, h, minX, maxY, step, n)
 {
@@ -233,7 +250,9 @@ function computeFractal()
 	const step = global.width / (w - 1);
 	const n = global.maxIteration;
 
-	(global.isJulia ? computeJulia : computeMandelbrot)(img1.data, w, h, minX, maxY, step, n);
+	(global.recompute ?
+		global.isJulia ? recomputeJulia : recomputeMandelbrot :
+		global.isJulia ?   computeJulia :   computeMandelbrot)(img1.data, w, h, minX, maxY, step, n);
 
 	convolve3x3(img1.data, img2.data, w, h);
 	global.context.putImageData(img2, 0, 0);
@@ -243,6 +262,7 @@ function computeFractal()
 	spinDisc.style.display = "none";
 
 	global.drawing = false;
+	global.recompute = false;
 }
 function draw()
 {
@@ -298,31 +318,35 @@ function documentKeyDown(event)
 {
 	if (event.target instanceof HTMLInputElement) return true;
 
+	function inc(k, v) { document.getElementById(k).value = global[k] += v; }
+	function dec(k, v) { document.getElementById(k).value = global[k] -= v; }
+	function mul(k, v) { document.getElementById(k).value = global[k] = Math.round(global[k] * v); }
+
 	switch (event.key)
 	{
 	case "i":
-	case "U+0049":
 		zoomIn();
 		break;
 	case "o":
-	case "U+004F":
 		zoomOut();
 		break;
+	case "z":
+		mul("maxIteration", 5/4); global.recompute = true;
+		break;
+	case "x":
+		mul("maxIteration", 3/4);
+		break;
 	case "ArrowLeft":
-		document.getElementById("centerX").value =
-		global.centerX -= global.width * global.pixelShift / global.canvas.width;
+		dec("centerX", global.width * global.pixelShift / global.canvas.width);
 		break;
 	case "ArrowRight":
-		document.getElementById("centerX").value =
-		global.centerX += global.width * global.pixelShift / global.canvas.width;
+		inc("centerX", global.width * global.pixelShift / global.canvas.width);
 		break;
 	case "ArrowDown":
-		document.getElementById("centerY").value =
-		global.centerY -= global.width * global.pixelShift / global.canvas.width;
+		dec("centerY", global.width * global.pixelShift / global.canvas.width);
 		break;
 	case "ArrowUp":
-		document.getElementById("centerY").value =
-		global.centerY += global.width * global.pixelShift / global.canvas.width;
+		inc("centerY", global.width * global.pixelShift / global.canvas.width);
 		break;
 	default:
 		return true;
@@ -411,7 +435,7 @@ function init()
 	document.getElementById("constantX").value = global.constantX;
 	document.getElementById("constantY").value = global.constantY;
 	document.getElementById("widthField").value = global.width;
-	document.getElementById("maxIterationField").value = global.maxIteration;
+	document.getElementById("maxIteration").value = global.maxIteration;
 
 	canvas.addEventListener("click", canvasClick);
 	document.addEventListener("keydown", documentKeyDown);
@@ -430,6 +454,8 @@ window.addEventListener("DOMContentLoaded", init);
 <li>Press &quot;i&quot; to zoom in.
 <li>Press &quot;o&quot; to zoom out.
 <li>Use the arrow keys to move 50 pixels left, right, up, or down.
+<li>Press &quot;z&quot; to increase maxIteration by 25%.
+<li>Press &quot;x&quot; to decrease maxIteration by 25%.
 </ul>
 
 <div id="examples">Examples:
@@ -480,7 +506,7 @@ window.addEventListener("DOMContentLoaded", init);
 </tr>
 <tr>
 <td>Max Iteration:</td>
-<td><input type="text" id="maxIterationField" size="5" disabled /></td>
+<td><input type="text" id="maxIteration" size="5" disabled /></td>
 </tr>
 </table>
 </div>
