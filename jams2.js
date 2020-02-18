@@ -3,18 +3,14 @@
 "use strict";
 function convolve3x3(s, d, width, height)
 {
-	const kernel = [0, 1, 0, 1, 2, 1, 0, 1, 0];
-
 	var yDelta = width * 4;
 	var i0, i1, i2, i3, i5, i6, i7, i8;
 
-	var k0 = kernel[0], k1 = kernel[1], k2 = kernel[2];
-	var k3 = kernel[3], k4 = kernel[4], k5 = kernel[5];
-	var k6 = kernel[6], k7 = kernel[7], k8 = kernel[8];
+	var k0 = 0, k1 = 1, k2 = 0;
+	var k3 = 1, k4 = 2, k5 = 1;
+	var k6 = 0, k7 = 1, k8 = 0;
 
 	var sumOfWeights = k0 + k1 + k2 + k3 + k4 + k5 + k6 + k7 + k8;
-	if (sumOfWeights === 0)
-		sumOfWeights = 1;
 
 	var i = 0;
 	for (var y = 0; y < height; ++y)
@@ -54,14 +50,10 @@ function convolve3x3(s, d, width, height)
 			var b = k8*s[i8+2] + k7*s[i7+2] + k6*s[i6+2] +
 				k5*s[i5+2] + k4*s[i +2] + k3*s[i3+2] +
 				k2*s[i2+2] + k1*s[i1+2] + k0*s[i0+2];
-			if (sumOfWeights !== 1) {
-				r /= sumOfWeights;
-				g /= sumOfWeights;
-				b /= sumOfWeights;
-			}
-			d[i  ] = r;
-			d[i+1] = g;
-			d[i+2] = b;
+
+			d[i  ] = r / sumOfWeights;
+			d[i+1] = g / sumOfWeights;
+			d[i+2] = b / sumOfWeights;
 			d[i+3] = s[i+3];
 			i += 4;
 		}
