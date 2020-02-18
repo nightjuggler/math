@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Julia and Mandelbrot Set Explorer</title>
+<style>
+body {
+	background-color: white;
+	font-family: verdana;
+	font-size: 12pt;
+}
+a {
+	text-decoration: none;
+}
+input {
+	font-family: verdana;
+	font-size: 12pt;
+	margin-top: 2px;
+	margin-bottom: 2px;
+}
+#canvas {
+	border: 4px solid black;
+	cursor: pointer;
+}
+#controlDiv {
+	background-color: rgba(230,230,250,0.8);
+	border: 2px solid black;
+	border-radius: 10px;
+	text-align: center;
+	width: 540px;
+	padding: 2px;
+	position: relative;
+}
+#paramTable td {
+	text-align: left;
+}
+#paramTable td:first-child {
+	text-align: right;
+}
+#examples ul {
+	margin-top: 0;
+}
+@keyframes spinDiscAnimation {
+	from { transform: rotateZ(0deg); }
+	to { transform: rotateZ(360deg); }
+}
+#spinDisc {
+	display: none;
+	position: absolute;
+	top: 284px; /* 600/2 + 4 - 20 */
+	left: 434px; /* 900/2 + 4 - 20 */
+	width: 0px;
+	height: 0px;
+
+	border-top: 20px solid rgb(65,105,225); /* RoyalBlue */
+	border-left: 20px solid rgb(135,206,250); /* LightSkyBlue */
+	border-bottom: 20px solid rgb(65,105,225); /* RoyalBlue */
+	border-right: 20px solid rgb(135,206,250); /* LightSkyBlue */
+	border-radius: 20px;
+
+	animation-name: spinDiscAnimation;
+	animation-duration: 1.0s;
+	animation-iteration-count: infinite;
+	animation-timing-function: linear;
+	animation-play-state: paused;
+}
+</style>
+<script>
+/* globals document, window, Worker */
+/* globals HTMLInputElement */
+(function() {
+"use strict";
+const global = {
+	centerX: -0.6,
+	centerY: 0,
+	width: 3,
+	zoom: 2,
+	maxIteration: 256,
+	pixelShift: 50,
+	isJulia: false,
+	constantX: 0,
+	constantY: 0,
+	clickTimeout: 0,
+	drawing: false,
+};
+function draw()
+{
+	const spinDisc = document.getElementById("spinDisc");
+	spinDisc.style.animationPlayState = "running";
+	spinDisc.style.display = "block";
+
+	global.clickTimeout = 0;
+	global.drawing = true;
+
+	const width = global.width;
+	const canvas = global.canvas;
+
+	global.worker.postMessage({
+		isJulia: global.isJulia,
+		cx: global.constantX,
+		cy: global.constantY,
+		maxIteration: global.maxIteration,
+		minX: global.centerX - width / 2,
+		maxY: global.centerY + width / 2 / global.widthHeightRatio,
+		step: width / (canvas.width - 1),
+		width: canvas.width,
+		height: canvas.height,
+	});
+}
+function setCenter(event)
+{
+	const c = global.canvas;
+	const x = event.clientX - c.clientLeft - c.offsetLeft + window.scrollX;
+	const y = event.clientY - c.clientTop - c.offsetTop + window.scrollY;
+
+	global.centerX += global.width * (x/c.width - 0.5);
+	global.centerY += global.width / global.widthHeightRatio * (0.5 - y/c.height);
+
+	document.getElementById("centerX").value = global.centerX;
+	document.getElementById("centerY").value = global.centerY;
+}
+function zoomIn()
+{
+	global.width /= global.zoom;
+	document.getElementById("widthField").value = global.width;
+}
+function zoomOut()
+{
+	global.width *= global.zoom;
+	document.getElementById("widthField").value = global.width;
+}
+function canvasClick(event)
+{
+	event.preventDefault();
+	event.stopPropagation();
+
+	if (global.drawing)
+		return false;
+	if (global.clickTimeout === 0) {
+		setCenter(event);
+		global.clickTimeout = window.setTimeout(draw, 500);
+	} else {
+		window.clearTimeout(global.clickTimeout);
+		zoomIn();
+		draw();
+	}
+	return false;
+}
+function documentKeyDown(event)
+{
+	if (event.target instanceof HTMLInputElement) return true;
+
+	switch (event.key)
+	{
+	case "i":
+	case "U+0049":
+		zoomIn();
+		break;
+	case "o":
+	case "U+004F":
+		zoomOut();
+		break;
+	case "ArrowLeft":
+		document.getElementById("centerX").value =
+		global.centerX -= global.width * global.pixelShift / global.canvas.width;
+		break;
+	case "ArrowRight":
+		document.getElementById("centerX").value =
+		global.centerX += global.width * global.pixelShift / global.canvas.width;
+		break;
+	case "ArrowDown":
+		document.getElementById("centerY").value =
+		global.centerY -= global.width * global.pixelShift / global.canvas.width;
+		break;
+	case "ArrowUp":
+		document.getElementById("centerY").value =
+		global.centerY += global.width * global.pixelShift / global.canvas.width;
+		break;
+	default:
+		return true;
+	}
+
+	draw();
+	event.preventDefault();
+	event.stopPropagation();
+	return false;
+}
+const _parseFloat = v =>
+	/^-?(?:0|[1-9][0-9]{0,2})(?:\.[0-9]{1,15})?$/.test(v) ? parseFloat(v) : null;
+function parseXY(v, name)
+{
+	if ((v = v.split(",")).length !== 2) return;
+	let [x, y] = v;
+	if ((x = _parseFloat(x)) === null) return;
+	if ((y = _parseFloat(y)) === null) return;
+	global[name + "X"] = x;
+	global[name + "Y"] = y;
+}
+function parseCenter(v)
+{
+	parseXY(v, "center");
+}
+function parseConstant(v)
+{
+	global.isJulia = true;
+	parseXY(v, "constant");
+}
+function parseMaxIteration(v)
+{
+	if (v.length <= 5 && /^[1-9][0-9]*$/.test(v))
+		global.maxIteration = parseInt(v, 10);
+}
+function parseWidth(v)
+{
+	if ((v = _parseFloat(v)) !== null && v > 0)
+		global.width = v;
+}
+function parseZoom(v)
+{
+	if (/^[1-9][0-9]?(?:\.[0-9]{1,2})?$/.test(v))
+		global.zoom = parseFloat(v);
+}
+function parseQueryString(handlers)
+{
+	const q = window.location.search;
+
+	if (typeof q !== "string" || q.charAt(0) !== "?") return;
+
+	for (const s of q.substring(1).split("&"))
+	{
+		const i = s.indexOf("=");
+		const [key, val] = i < 0 ? [s, ""] : [s.substring(0, i), s.substring(i + 1)];
+
+		if (key.length <= 1 && /^[a-z]+$/.test(key) && handlers.hasOwnProperty(key))
+			handlers[key](val);
+	}
+}
+function init()
+{
+	parseQueryString({
+		c: parseConstant,
+		i: parseMaxIteration,
+		o: parseCenter,
+		w: parseWidth,
+		z: parseZoom,
+	});
+
+	const canvas = document.getElementById("canvas");
+	const context = canvas.getContext("2d");
+	const imageData = context.createImageData(canvas.width, canvas.height);
+
+	global.canvas = canvas;
+	global.widthHeightRatio = canvas.width / canvas.height;
+
+	global.worker = new Worker("jams2.js");
+	global.worker.addEventListener("message", function({data}) {
+		imageData.data.set(data);
+		context.putImageData(imageData, 0, 0);
+
+		const spinDisc = document.getElementById("spinDisc");
+		spinDisc.style.animationPlayState = "paused";
+		spinDisc.style.display = "none";
+
+		global.drawing = false;
+	});
+
+	draw();
+
+	document.getElementById("centerX").value = global.centerX;
+	document.getElementById("centerY").value = global.centerY;
+	document.getElementById("constantX").value = global.constantX;
+	document.getElementById("constantY").value = global.constantY;
+	document.getElementById("widthField").value = global.width;
+	document.getElementById("maxIterationField").value = global.maxIteration;
+
+	canvas.addEventListener("click", canvasClick);
+	document.addEventListener("keydown", documentKeyDown);
+}
+window.addEventListener("DOMContentLoaded", init);
+})();
+</script>
+</head>
+<body>
+
+<canvas id="canvas" width="900" height="600"></canvas>
+
+<ul>
+<li>Click to set the center.
+<li>Double click to set the center and zoom in.
+<li>Press &quot;i&quot; to zoom in.
+<li>Press &quot;o&quot; to zoom out.
+<li>Use the arrow keys to move 50 pixels left, right, up, or down.
+</ul>
+
+<div id="examples">Examples:
+<ul>
+<li><a href="jams2.html?o=-1.2025,-0.1617&w=0.005&i=512">Mandelbrot set:
+	center=-1.2025,-0.1617 / width=0.005 / maxIteration=512</a>
+
+<li><a href="jams2.html?o=-1.768573656315,-0.000964296851&w=0.000001&i=4096">Mandelbrot set:
+	center=-1.768573656315,-0.000964296851 / width=0.000001 / maxIteration=4096</a>
+
+<li><a href="jams2.html?c=-0.7269,0.1889&o=0.725,-0.2&w=3.05&i=1024">Julia set:
+	constant=-0.7269,0.1889 / center=0.725,-0.2 / width=3.05 / maxIteration=1024</a>
+
+<li><a href="jams2.html?c=-0.4,0.6&o=0.4,-0.6&w=3.12&i=512">Julia set:
+	constant=-0.4,0.6 / center=0.4,-0.6 / width=3.12 / maxIteration=512</a>
+
+<li><a href="jams2.html?c=-0.8,0.156&o=0.8,-0.16&w=3.2&i=512">Julia set:
+	constant=-0.8,0.156 / center=0.8,-0.16 / width=3.2 / maxIteration=512</a>
+
+<li><a href="jams2.html?c=-0.835,-0.2321&o=0.85,0.2&w=3.3&i=256">Julia set:
+	constant=-0.835,-0.2321 / center=0.85,0.2 / width=3.3 / maxIteration=256</a>
+
+<li><a href="jams2.html?c=0.285,0.01&o=-0.25,-0.0167&w=3.5&i=256">Julia set:
+	constant=0.285,0.01 / center=-0.25,-0.0167 / width=3.5 / maxIteration=256</a>
+
+<li><a href="jams2.html?c=-0.214,0.789&o=0.25,-0.767&w=3.5&i=256">Julia set:
+	constant=-0.214,0.789 / center=0.25,-0.767 / width=3.5 / maxIteration=256</a>
+</ul>
+</div>
+
+<div id="controlDiv">
+<table id="paramTable">
+<tr>
+<td>Constant:</td>
+<td>
+<input type="text" id="constantX" size="20" disabled />,
+<input type="text" id="constantY" size="20" disabled /></td>
+</tr>
+<tr>
+<td>Center:</td>
+<td>
+<input type="text" id="centerX" size="20" disabled />,
+<input type="text" id="centerY" size="20" disabled /></td>
+</tr>
+<tr>
+<td>Width:</td>
+<td><input type="text" id="widthField" size="20" disabled /></td>
+</tr>
+<tr>
+<td>Max Iteration:</td>
+<td><input type="text" id="maxIterationField" size="5" disabled /></td>
+</tr>
+</table>
+</div>
+
+<div id="spinDisc"></div>
+
+</body>
+</html>
