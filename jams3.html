@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Julia and Mandelbrot Set Explorer</title>
+<style>
+body {
+	background-color: white;
+	font-family: verdana;
+	font-size: 12pt;
+}
+a {
+	text-decoration: none;
+}
+input {
+	font-family: verdana;
+	font-size: 12pt;
+	margin-top: 2px;
+	margin-bottom: 2px;
+}
+#canvas {
+	border: 4px solid black;
+	cursor: pointer;
+}
+#controlDiv {
+	background-color: rgba(230,230,250,0.8);
+	border: 2px solid black;
+	border-radius: 10px;
+	text-align: center;
+	width: 540px;
+	padding: 2px;
+	position: relative;
+}
+#paramTable td {
+	text-align: left;
+}
+#paramTable td:first-child {
+	text-align: right;
+}
+#examples ul {
+	margin-top: 0;
+}
+@keyframes spinDiscAnimation {
+	from { transform: rotateZ(0deg); }
+	to { transform: rotateZ(360deg); }
+}
+#spinDisc {
+	display: none;
+	position: absolute;
+	top: 284px; /* 600/2 + 4 - 20 */
+	left: 434px; /* 900/2 + 4 - 20 */
+	width: 0px;
+	height: 0px;
+
+	border-top: 20px solid rgb(65,105,225); /* RoyalBlue */
+	border-left: 20px solid rgb(135,206,250); /* LightSkyBlue */
+	border-bottom: 20px solid rgb(65,105,225); /* RoyalBlue */
+	border-right: 20px solid rgb(135,206,250); /* LightSkyBlue */
+	border-radius: 20px;
+
+	animation-name: spinDiscAnimation;
+	animation-duration: 1.0s;
+	animation-iteration-count: infinite;
+	animation-timing-function: linear;
+	animation-play-state: paused;
+}
+</style>
+<script>
+/* globals console, document, window */
+/* globals HTMLInputElement */
+/* globals Blob, Response, WebAssembly, fetch */
+(function() {
+"use strict";
+const global = {
+	centerX: -0.6,
+	centerY: 0,
+	width: 3,
+	zoom: 2,
+	maxIteration: 256,
+	pixelShift: 50,
+	isJulia: false,
+	constantX: 0,
+	constantY: 0,
+	clickTimeout: 0,
+	drawing: false,
+};
+var inSet;
+function setRGB(d, i, iterationCount)
+{
+	if (iterationCount === -1) {
+		d[i  ] = 0;
+		d[i+1] = 0;
+		d[i+2] = 0;
+		d[i+3] = 255;
+		return;
+	}
+	var h = (280 + iterationCount) % 360 / 60;
+	if (h < 1) {
+		// rgb(255,0,0) -> rgb(255,255,0) [Red -> Yellow]
+		d[i  ] = 255;
+		d[i+1] = 255 * h;
+		d[i+2] = 0;
+	} else if (h < 2) {
+		// rgb(255,255,0) -> rgb(0,255,0) [Yellow -> Lime]
+		d[i  ] = 255 * (2 - h);
+		d[i+1] = 255;
+		d[i+2] = 0;
+	} else if (h < 3) {
+		// rgb(0,255,0) -> rgb(0,255,255) [Lime -> Cyan]
+		d[i  ] = 0;
+		d[i+1] = 255;
+		d[i+2] = 255 * (h - 2);
+	} else if (h < 4) {
+		// rgb(0,255,255) -> rgb(0,0,255) [Cyan -> Blue]
+		d[i  ] = 0;
+		d[i+1] = 255 * (4 - h);
+		d[i+2] = 255;
+	} else if (h < 5) {
+		// rgb(0,0,255) -> rgb(255,0,255) [Blue -> Magenta]
+		d[i  ] = 255 * (h - 4);
+		d[i+1] = 0;
+		d[i+2] = 255;
+	} else {
+		// rgb(255,0,255) -> rgb(255,0,0) [Magenta -> Red]
+		d[i  ] = 255;
+		d[i+1] = 0;
+		d[i+2] = 255 * (6 - h);
+	}
+	d[i+3] = 255;
+}
+function recomputeJulia(d, w, h, minX, maxY, step, n)
+{
+	var cx = global.constantX;
+	var cy = global.constantY;
+
+	for (var y = h, zy = maxY, i = 0; y !== 0; y -= 1, zy -= step)
+		for (var x = w, zx = minX; x !== 0; x -= 1, zx += step, i += 4)
+			if (d[i] === 0 && d[i+1] === 0 && d[i+2] === 0)
+				setRGB(d, i, inSet(zx, zy, cx, cy, n));
+}
+function computeJulia(d, w, h, minX, maxY, step, n)
+{
+	var cx = global.constantX;
+	var cy = global.constantY;
+
+	for (var y = h, zy = maxY, i = 0; y !== 0; y -= 1, zy -= step)
+		for (var x = w, zx = minX; x !== 0; x -= 1, zx += step, i += 4)
+			setRGB(d, i, inSet(zx, zy, cx, cy, n));
+}
+function recomputeMandelbrot(d, w, h, minX, maxY, step, n)
+{
+	for (var y = h, zy = maxY, i = 0; y !== 0; y -= 1, zy -= step)
+		for (var x = w, zx = minX; x !== 0; x -= 1, zx += step, i += 4)
+			if (d[i] === 0 && d[i+1] === 0 && d[i+2] === 0)
+				setRGB(d, i, inSet(0, 0, zx, zy, n));
+}
+function computeMandelbrot(d, w, h, minX, maxY, step, n)
+{
+	for (var y = h, zy = maxY, i = 0; y !== 0; y -= 1, zy -= step)
+		for (var x = w, zx = minX; x !== 0; x -= 1, zx += step, i += 4)
+			setRGB(d, i, inSet(0, 0, zx, zy, n));
+}
+function convolve3x3(s, d, width, height)
+{
+	var yDelta = width * 4;
+	var i0, i1, i2, i3, i5, i6, i7, i8;
+
+	var k0 = 0, k1 = 1, k2 = 0;
+	var k3 = 1, k4 = 2, k5 = 1;
+	var k6 = 0, k7 = 1, k8 = 0;
+
+	var sumOfWeights = k0 + k1 + k2 + k3 + k4 + k5 + k6 + k7 + k8;
+
+	var i = 0;
+	for (var y = 0; y < height; ++y)
+	{
+		var yUp = y === 0 ? 0 : -yDelta;
+		var yDn = y === height - 1 ? 0 : yDelta;
+
+		for (var x = 0; x < width; ++x)
+		{
+			var xLft = x === 0 ? 0 : -4;
+			var xRgt = x === width - 1 ? 0 : 4;
+/*
+	"The values in the kernel matrix are applied such that the kernel matrix is rotated 180 degrees
+	relative to the source and destination images in order to match convolution theory as described
+	in many computer graphics textbooks."
+	(https://www.w3.org/TR/filter-effects-1/#feConvolveMatrixElement)
+*/
+			// 8 7 6
+			// 5 4 3
+			// 2 1 0
+
+			i7 = i + yUp;
+			i8 = i7 + xLft;
+			i6 = i7 + xRgt;
+			i5 = i + xLft;
+			i3 = i + xRgt;
+			i1 = i + yDn;
+			i2 = i1 + xLft;
+			i0 = i1 + xRgt;
+
+			var r = k8*s[i8] + k7*s[i7] + k6*s[i6] +
+				k5*s[i5] + k4*s[i ] + k3*s[i3] +
+				k2*s[i2] + k1*s[i1] + k0*s[i0];
+			var g = k8*s[i8+1] + k7*s[i7+1] + k6*s[i6+1] +
+				k5*s[i5+1] + k4*s[i +1] + k3*s[i3+1] +
+				k2*s[i2+1] + k1*s[i1+1] + k0*s[i0+1];
+			var b = k8*s[i8+2] + k7*s[i7+2] + k6*s[i6+2] +
+				k5*s[i5+2] + k4*s[i +2] + k3*s[i3+2] +
+				k2*s[i2+2] + k1*s[i1+2] + k0*s[i0+2];
+
+			d[i  ] = r / sumOfWeights;
+			d[i+1] = g / sumOfWeights;
+			d[i+2] = b / sumOfWeights;
+			d[i+3] = s[i+3];
+			i += 4;
+		}
+	}
+}
+function computeFractal()
+{
+	const minX = global.centerX - global.width / 2;
+	const maxY = global.centerY + global.width / 2 / global.widthHeightRatio;
+
+	const img1 = global.imageData1;
+	const img2 = global.imageData2;
+	const w = img1.width;
+	const h = img1.height;
+	const step = global.width / (w - 1);
+	const n = global.maxIteration;
+
+	(global.recompute ?
+		global.isJulia ? recomputeJulia : recomputeMandelbrot :
+		global.isJulia ?   computeJulia :   computeMandelbrot)(img1.data, w, h, minX, maxY, step, n);
+
+	convolve3x3(img1.data, img2.data, w, h);
+	global.context.putImageData(img2, 0, 0);
+
+	const spinDisc = document.getElementById("spinDisc");
+	spinDisc.style.animationPlayState = "paused";
+	spinDisc.style.display = "none";
+
+	global.drawing = false;
+	global.recompute = false;
+}
+function draw()
+{
+	const spinDisc = document.getElementById("spinDisc");
+	spinDisc.style.animationPlayState = "running";
+	spinDisc.style.display = "block";
+
+	global.clickTimeout = 0;
+	global.drawing = true;
+
+	window.setTimeout(computeFractal, 20);
+}
+function setCenter(event)
+{
+	const c = global.canvas;
+	const x = event.clientX - c.clientLeft - c.offsetLeft + window.scrollX;
+	const y = event.clientY - c.clientTop - c.offsetTop + window.scrollY;
+
+	global.centerX += global.width * (x/c.width - 0.5);
+	global.centerY += global.width / global.widthHeightRatio * (0.5 - y/c.height);
+
+	document.getElementById("centerX").value = global.centerX;
+	document.getElementById("centerY").value = global.centerY;
+}
+function zoomIn()
+{
+	global.width /= global.zoom;
+	document.getElementById("widthField").value = global.width;
+}
+function zoomOut()
+{
+	global.width *= global.zoom;
+	document.getElementById("widthField").value = global.width;
+}
+function canvasClick(event)
+{
+	event.preventDefault();
+	event.stopPropagation();
+
+	if (global.drawing)
+		return false;
+	if (global.clickTimeout === 0) {
+		setCenter(event);
+		global.clickTimeout = window.setTimeout(draw, 500);
+	} else {
+		window.clearTimeout(global.clickTimeout);
+		zoomIn();
+		draw();
+	}
+	return false;
+}
+function documentKeyDown(event)
+{
+	if (event.target instanceof HTMLInputElement) return true;
+
+	function inc(k, v) { document.getElementById(k).value = global[k] += v; }
+	function dec(k, v) { document.getElementById(k).value = global[k] -= v; }
+	function mul(k, v) { document.getElementById(k).value = global[k] = Math.round(global[k] * v); }
+
+	switch (event.key)
+	{
+	case "i":
+		zoomIn();
+		break;
+	case "o":
+		zoomOut();
+		break;
+	case "z":
+		mul("maxIteration", 5/4); global.recompute = true;
+		break;
+	case "x":
+		mul("maxIteration", 3/4);
+		break;
+	case "ArrowLeft":
+		dec("centerX", global.width * global.pixelShift / global.canvas.width);
+		break;
+	case "ArrowRight":
+		inc("centerX", global.width * global.pixelShift / global.canvas.width);
+		break;
+	case "ArrowDown":
+		dec("centerY", global.width * global.pixelShift / global.canvas.width);
+		break;
+	case "ArrowUp":
+		inc("centerY", global.width * global.pixelShift / global.canvas.width);
+		break;
+	default:
+		return true;
+	}
+
+	draw();
+	event.preventDefault();
+	event.stopPropagation();
+	return false;
+}
+const _parseFloat = v =>
+	/^-?(?:0|[1-9][0-9]{0,2})(?:\.[0-9]{1,15})?$/.test(v) ? parseFloat(v) : null;
+function parseXY(v, name)
+{
+	if ((v = v.split(",")).length !== 2) return;
+	let [x, y] = v;
+	if ((x = _parseFloat(x)) === null) return;
+	if ((y = _parseFloat(y)) === null) return;
+	global[name + "X"] = x;
+	global[name + "Y"] = y;
+}
+function parseCenter(v)
+{
+	parseXY(v, "center");
+}
+function parseConstant(v)
+{
+	global.isJulia = true;
+	parseXY(v, "constant");
+}
+function parseMaxIteration(v)
+{
+	if (v.length <= 5 && /^[1-9][0-9]*$/.test(v))
+		global.maxIteration = parseInt(v, 10);
+}
+function parseWidth(v)
+{
+	if ((v = _parseFloat(v)) !== null && v > 0)
+		global.width = v;
+}
+function parseZoom(v)
+{
+	if (/^[1-9][0-9]?(?:\.[0-9]{1,2})?$/.test(v))
+		global.zoom = parseFloat(v);
+}
+function parseWasmLoadType(v)
+{
+	if (v.length === 1 && /^[1-9]$/.test(v))
+		global.wasmLoadType = parseInt(v, 10);
+}
+function parseQueryString(handlers)
+{
+	const q = window.location.search;
+
+	if (typeof q !== "string" || q.charAt(0) !== "?") return;
+
+	for (const s of q.substring(1).split("&"))
+	{
+		const i = s.indexOf("=");
+		const [key, val] = i < 0 ? [s, ""] : [s.substring(0, i), s.substring(i + 1)];
+
+		if (key.length <= 4 && /^[a-z]+$/.test(key) && handlers.hasOwnProperty(key))
+			handlers[key](val);
+	}
+}
+// hexdump -v -e '16/1 "0x%02X," 1/0 "\n"' jams3.wasm
+const wasmBytes = [
+0x00,0x61,0x73,0x6D,0x01,0x00,0x00,0x00,0x01,0x0A,0x01,0x60,0x05,0x7C,0x7C,0x7C,
+0x7C,0x7F,0x01,0x7F,0x03,0x02,0x01,0x00,0x07,0x09,0x01,0x05,0x69,0x6E,0x53,0x65,
+0x74,0x00,0x00,0x0A,0x6B,0x01,0x69,0x02,0x01,0x7F,0x02,0x7C,0x20,0x00,0x20,0x02,
+0xA0,0x21,0x00,0x20,0x01,0x20,0x03,0xA0,0x21,0x01,0x03,0x40,0x20,0x00,0x20,0x00,
+0xA2,0x21,0x06,0x20,0x01,0x20,0x01,0xA2,0x21,0x07,0x20,0x06,0x20,0x07,0xA0,0x44,
+0x00,0x00,0x00,0x00,0x00,0x00,0x10,0x40,0x65,0x04,0x40,0x20,0x05,0x41,0x01,0x6A,
+0x22,0x05,0x20,0x04,0x46,0x04,0x40,0x41,0x7F,0x0F,0x0B,0x20,0x03,0x44,0x00,0x00,
+0x00,0x00,0x00,0x00,0x00,0x40,0x20,0x00,0xA2,0x20,0x01,0xA2,0xA0,0x21,0x01,0x20,
+0x02,0x20,0x06,0x20,0x07,0xA1,0xA0,0x21,0x00,0x0C,0x01,0x0B,0x0B,0x20,0x05,0x0B,
+];
+function wasmLoad()
+{
+	let loadType = global.wasmLoadType || 5;
+
+	// 1 => fetch() and instantiateStreaming()
+	// 2 => fetch() and instantiate()
+	// 3 => instantiate()
+	// 4 => Blob(), Response(), and instantiateStreaming()
+	// 5 => Response() and instantiateStreaming()
+
+	if (!WebAssembly.instantiateStreaming) { // Safari
+		if (loadType < 2) loadType = 2; else
+		if (loadType > 3) loadType = 3;
+	}
+
+	if (loadType === 1) {
+		console.log("Loading wasm via fetch() and instantiateStreaming()");
+		return WebAssembly.instantiateStreaming(fetch("jams3.wasm"));
+	}
+	if (loadType === 2) {
+		console.log("Loading wasm via fetch() and instantiate()");
+		return fetch("jams3.wasm").
+			then(response => response.arrayBuffer()).
+			then(buffer => WebAssembly.instantiate(buffer));
+	}
+
+	const wasm = new Uint8Array(wasmBytes.length);
+	wasm.set(wasmBytes);
+
+	if (loadType === 3) {
+		console.log("Loading wasm via instantiate()");
+		return WebAssembly.instantiate(wasm);
+	}
+	if (loadType === 4) {
+		console.log("Loading wasm via Blob(), Response(), and instantiateStreaming()");
+		return WebAssembly.instantiateStreaming(
+			new Response(new Blob([wasm], {type: "application/wasm"})));
+	}
+
+		console.log("Loading wasm via Response() and instantiateStreaming()");
+		return WebAssembly.instantiateStreaming(
+			new Response(wasm, {headers: {"Content-Type": "application/wasm"}}));
+}
+function init()
+{
+	parseQueryString({
+		c: parseConstant,
+		i: parseMaxIteration,
+		o: parseCenter,
+		w: parseWidth,
+		z: parseZoom,
+		wasm: parseWasmLoadType,
+	});
+
+	const canvas = document.getElementById("canvas");
+	const context = canvas.getContext("2d");
+	const {width, height} = canvas;
+
+	global.imageData1 = context.createImageData(width, height);
+	global.imageData2 = context.createImageData(width, height);
+
+	global.canvas = canvas;
+	global.context = context;
+	global.widthHeightRatio = width / height;
+
+	document.getElementById("centerX").value = global.centerX;
+	document.getElementById("centerY").value = global.centerY;
+	document.getElementById("constantX").value = global.constantX;
+	document.getElementById("constantY").value = global.constantY;
+	document.getElementById("widthField").value = global.width;
+	document.getElementById("maxIteration").value = global.maxIteration;
+
+	wasmLoad().then(({instance}) =>
+	{
+		inSet = instance.exports.inSet;
+		draw();
+
+		canvas.addEventListener("click", canvasClick);
+		document.addEventListener("keydown", documentKeyDown);
+	});
+}
+window.addEventListener("DOMContentLoaded", init);
+})();
+</script>
+</head>
+<body>
+
+<canvas id="canvas" width="900" height="600"></canvas>
+
+<ul>
+<li>Click to set the center.
+<li>Double click to set the center and zoom in.
+<li>Press &quot;i&quot; to zoom in.
+<li>Press &quot;o&quot; to zoom out.
+<li>Use the arrow keys to move 50 pixels left, right, up, or down.
+<li>Press &quot;z&quot; to increase the max iterations per pixel by 25%.
+<li>Press &quot;x&quot; to decrease the max iterations per pixel by 25%.
+</ul>
+
+<div id="examples">Examples:
+<ul>
+<li><a href="jams3.html?o=-1.2025,-0.1617&w=0.005&i=512">Mandelbrot set:
+	center=-1.2025,-0.1617 / width=0.005 / maxIteration=512</a>
+
+<li><a href="jams3.html?o=-1.768573656315,-0.000964296851&w=0.000001&i=4096">Mandelbrot set:
+	center=-1.768573656315,-0.000964296851 / width=0.000001 / maxIteration=4096</a>
+
+<li><a href="jams3.html?c=-0.7269,0.1889&o=0.725,-0.2&w=3.05&i=1024">Julia set:
+	constant=-0.7269,0.1889 / center=0.725,-0.2 / width=3.05 / maxIteration=1024</a>
+
+<li><a href="jams3.html?c=-0.4,0.6&o=0.4,-0.6&w=3.12&i=512">Julia set:
+	constant=-0.4,0.6 / center=0.4,-0.6 / width=3.12 / maxIteration=512</a>
+
+<li><a href="jams3.html?c=-0.8,0.156&o=0.8,-0.16&w=3.2&i=512">Julia set:
+	constant=-0.8,0.156 / center=0.8,-0.16 / width=3.2 / maxIteration=512</a>
+
+<li><a href="jams3.html?c=-0.835,-0.2321&o=0.85,0.2&w=3.3&i=256">Julia set:
+	constant=-0.835,-0.2321 / center=0.85,0.2 / width=3.3 / maxIteration=256</a>
+
+<li><a href="jams3.html?c=0.285,0.01&o=-0.25,-0.0167&w=3.5&i=256">Julia set:
+	constant=0.285,0.01 / center=-0.25,-0.0167 / width=3.5 / maxIteration=256</a>
+
+<li><a href="jams3.html?c=-0.214,0.789&o=0.25,-0.767&w=3.5&i=256">Julia set:
+	constant=-0.214,0.789 / center=0.25,-0.767 / width=3.5 / maxIteration=256</a>
+</ul>
+</div>
+
+<div id="controlDiv">
+<table id="paramTable">
+<tr>
+<td>Constant:</td>
+<td>
+<input type="text" id="constantX" size="20" disabled />,
+<input type="text" id="constantY" size="20" disabled /></td>
+</tr>
+<tr>
+<td>Center:</td>
+<td>
+<input type="text" id="centerX" size="20" disabled />,
+<input type="text" id="centerY" size="20" disabled /></td>
+</tr>
+<tr>
+<td>Width:</td>
+<td><input type="text" id="widthField" size="20" disabled /></td>
+</tr>
+<tr>
+<td>Max Iteration:</td>
+<td><input type="text" id="maxIteration" size="5" disabled /></td>
+</tr>
+</table>
+</div>
+
+<div id="spinDisc"></div>
+
+</body>
+</html>
