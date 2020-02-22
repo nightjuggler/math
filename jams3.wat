@@ -11,11 +11,12 @@
 	(local.set $zy (f64.add (local.get $zy) (local.get $cy))) ;; zy += cy
 
 	(loop $loop
-	(local.set $zx2 (f64.mul (local.get $zx) (local.get $zx))) ;; zx2 = zx*zx
-	(local.set $zy2 (f64.mul (local.get $zy) (local.get $zy))) ;; zy2 = zy*zy
 
-	;; if (zx2 + zy2 <= 4)
-	(if (f64.le (f64.add (local.get $zx2) (local.get $zy2)) (f64.const 4))
+	;; if ((zx2 = zx*zx) + (zy2 = zy*zy) <= 4)
+	(if (f64.le (f64.add
+		(local.tee $zx2 (f64.mul (local.get $zx) (local.get $zx))) ;; zx2 = zx*zx
+		(local.tee $zy2 (f64.mul (local.get $zy) (local.get $zy))) ;; zy2 = zy*zy
+		) (f64.const 4))
 		(then
 
 		;; if (++i === n) return -1
