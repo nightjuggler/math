@@ -83,38 +83,29 @@ const global = {
 	clickTimeout: 0,
 	drawing: false,
 };
-function inSet(zx, zy, cx, cy, n)
+function doPixel(d, i, zx, zy, cx, cy, n)
 {
 	zx += cx;
 	zy += cy;
 
-	var i = 0;
-	var zx2 = zx*zx;
-	var zy2 = zy*zy;
+	let k = n;
+	let zx2;
+	let zy2;
 
-	while (zx2 + zy2 <= 4)
+	while ((zx2 = zx*zx) + (zy2 = zy*zy) <= 4)
 	{
-		if (++i === n)
-			return null;
-
+		if (--k === 0) {
+			d[i  ] = 0;
+			d[i+1] = 0;
+			d[i+2] = 0;
+			d[i+3] = 255;
+			return;
+		}
 		zy = cy + 2*zx*zy;
 		zx = cx + zx2 - zy2;
+	}
 
-		zx2 = zx*zx;
-		zy2 = zy*zy;
-	}
-	return i;
-}
-function setRGB(d, i, iterationCount)
-{
-	if (iterationCount === null) {
-		d[i  ] = 0;
-		d[i+1] = 0;
-		d[i+2] = 0;
-		d[i+3] = 255;
-		return;
-	}
-	var h = (280 + iterationCount) % 360 / 60;
+	const h = (280 + n - k) % 360 / 60;
 	if (h < 1) {
 		// rgb(255,0,0) -> rgb(255,255,0) [Red -> Yellow]
 		d[i  ] = 255;
@@ -156,7 +147,7 @@ function recomputeJulia(d, w, h, minX, maxY, step, n)
 	for (var y = h, zy = maxY, i = 0; y !== 0; y -= 1, zy -= step)
 		for (var x = w, zx = minX; x !== 0; x -= 1, zx += step, i += 4)
 			if (d[i] === 0 && d[i+1] === 0 && d[i+2] === 0)
-				setRGB(d, i, inSet(zx, zy, cx, cy, n));
+				doPixel(d, i, zx, zy, cx, cy, n);
 }
 function computeJulia(d, w, h, minX, maxY, step, n)
 {
@@ -165,20 +156,35 @@ function computeJulia(d, w, h, minX, maxY, step, n)
 
 	for (var y = h, zy = maxY, i = 0; y !== 0; y -= 1, zy -= step)
 		for (var x = w, zx = minX; x !== 0; x -= 1, zx += step, i += 4)
-			setRGB(d, i, inSet(zx, zy, cx, cy, n));
+			doPixel(d, i, zx, zy, cx, cy, n);
+}
+function computeJuliaSubset(d, i, iStepY, w, h, minX, maxY, step, n)
+{
+	var cx = global.constantX;
+	var cy = global.constantY;
+
+	for (var y = h, zy = maxY; y !== 0; y -= 1, zy -= step, i += iStepY)
+		for (var x = w, zx = minX; x !== 0; x -= 1, zx += step, i += 4)
+			doPixel(d, i, zx, zy, cx, cy, n);
 }
 function recomputeMandelbrot(d, w, h, minX, maxY, step, n)
 {
 	for (var y = h, zy = maxY, i = 0; y !== 0; y -= 1, zy -= step)
 		for (var x = w, zx = minX; x !== 0; x -= 1, zx += step, i += 4)
 			if (d[i] === 0 && d[i+1] === 0 && d[i+2] === 0)
-				setRGB(d, i, inSet(0, 0, zx, zy, n));
+				doPixel(d, i, 0, 0, zx, zy, n);
 }
 function computeMandelbrot(d, w, h, minX, maxY, step, n)
 {
 	for (var y = h, zy = maxY, i = 0; y !== 0; y -= 1, zy -= step)
 		for (var x = w, zx = minX; x !== 0; x -= 1, zx += step, i += 4)
-			setRGB(d, i, inSet(0, 0, zx, zy, n));
+			doPixel(d, i, 0, 0, zx, zy, n);
+}
+function computeMandelbrotSubset(d, i, iStepY, w, h, minX, maxY, step, n)
+{
+	for (var y = h, zy = maxY; y !== 0; y -= 1, zy -= step, i += iStepY)
+		for (var x = w, zx = minX; x !== 0; x -= 1, zx += step, i += 4)
+			doPixel(d, i, 0, 0, zx, zy, n);
 }
 function convolve3x3(s, d, width, height)
 {
@@ -250,6 +256,15 @@ function computeFractal()
 	const step = global.width / (w - 1);
 	const n = global.maxIteration;
 
+	if (global.subsetConfig) {
+		const [x, y, sw, sh] = global.subsetConfig;
+		global.subsetConfig = undefined;
+
+		(global.isJulia ? computeJuliaSubset : computeMandelbrotSubset)(img1.data,
+			4 * (x + y * w), 4 * (w - sw), sw, sh,
+			minX + x * step,
+			maxY - y * step, step, n);
+	} else
 	(global.recompute ?
 		global.isJulia ? recomputeJulia : recomputeMandelbrot :
 		global.isJulia ?   computeJulia :   computeMandelbrot)(img1.data, w, h, minX, maxY, step, n);
@@ -314,6 +329,64 @@ function canvasClick(event)
 	}
 	return false;
 }
+function moveUp()
+{
+	const {data, width, height} = global.imageData1;
+	const pixelShift = global.pixelShift;
+
+	if (Uint8ClampedArray.prototype.copyWithin) {
+		data.copyWithin(4 * width * pixelShift, 0);
+	} else {
+		const di = 4 * width * pixelShift;
+		let i = 4 * width * height - di;
+		while (i !== 0) data[--i + di] = data[i];
+	}
+
+	global.subsetConfig = [0, 0, width, pixelShift];
+}
+function moveDown()
+{
+	const {data, width, height} = global.imageData1;
+	const pixelShift = global.pixelShift;
+
+	if (Uint8ClampedArray.prototype.copyWithin) {
+		data.copyWithin(0, 4 * width * pixelShift);
+	} else {
+		const di = 4 * width * pixelShift;
+		const n = 4 * width * height - di;
+		for (let i = 0; i !== n; i += 1) data[i] = data[i + di];
+	}
+
+	global.subsetConfig = [0, height - pixelShift, width, pixelShift];
+}
+function moveLeft()
+{
+	const {data, width, height} = global.imageData1;
+	const pixelShift = global.pixelShift;
+	const di = 4 * pixelShift;
+	const yStep = 4 * width;
+	const xStart = yStep - di - 1;
+
+	for (let y = height, iy = 0; y !== 0; y -= 1, iy += yStep)
+		for (let ix = xStart; ix >= 0; ix -= 1)
+			data[iy + ix + di] = data[iy + ix];
+
+	global.subsetConfig = [0, 0, pixelShift, height];
+}
+function moveRight()
+{
+	const {data, width, height} = global.imageData1;
+	const pixelShift = global.pixelShift;
+	const di = 4 * pixelShift;
+	const yStep = 4 * width;
+	const xEnd = yStep - di - 1;
+
+	for (let y = height, iy = 0; y !== 0; y -= 1, iy += yStep)
+		for (let ix = 0; ix <= xEnd; ix += 1)
+			data[iy + ix] = data[iy + ix + di];
+
+	global.subsetConfig = [width - pixelShift, 0, pixelShift, height];
+}
 function documentKeyDown(event)
 {
 	if (event.target instanceof HTMLInputElement) return true;
@@ -337,16 +410,16 @@ function documentKeyDown(event)
 		mul("maxIteration", 3/4);
 		break;
 	case "ArrowLeft":
-		dec("centerX", global.width * global.pixelShift / global.canvas.width);
+		dec("centerX", global.width * global.pixelShift / global.canvas.width); moveLeft();
 		break;
 	case "ArrowRight":
-		inc("centerX", global.width * global.pixelShift / global.canvas.width);
+		inc("centerX", global.width * global.pixelShift / global.canvas.width); moveRight();
 		break;
 	case "ArrowDown":
-		dec("centerY", global.width * global.pixelShift / global.canvas.width);
+		dec("centerY", global.width * global.pixelShift / global.canvas.width); moveDown();
 		break;
 	case "ArrowUp":
-		inc("centerY", global.width * global.pixelShift / global.canvas.width);
+		inc("centerY", global.width * global.pixelShift / global.canvas.width); moveUp();
 		break;
 	default:
 		return true;
@@ -454,8 +527,8 @@ window.addEventListener("DOMContentLoaded", init);
 <li>Press &quot;i&quot; to zoom in.
 <li>Press &quot;o&quot; to zoom out.
 <li>Use the arrow keys to move 50 pixels left, right, up, or down.
-<li>Press &quot;z&quot; to increase maxIteration by 25%.
-<li>Press &quot;x&quot; to decrease maxIteration by 25%.
+<li>Press &quot;z&quot; to increase the max iterations per pixel by 25%.
+<li>Press &quot;x&quot; to decrease the max iterations per pixel by 25%.
 </ul>
 
 <div id="examples">Examples:
