@@ -2,9 +2,9 @@
 
 A script for analyzing [Goldbach partitions](https://en.wikipedia.org/wiki/Goldbach's_conjecture).
 
-Currently testing the following observation/conjecture (12/31/2019) and its implications:
+Conjecture (12/31/2019):
 
-For every prime P, there exists a threshold N such that every even number > N is the sum of two primes > P.
+*For every prime P, there exists a threshold N such that every even number > N is the sum of two primes > P.*
 
 N is the lowest such threshold, i.e. N itself is not the sum of two primes > P.
 
@@ -12,7 +12,8 @@ N / P goes to 2 as P goes to infinity.
 
 For example, the first few pairs (P, N) are (2, 4), (3, 8), (5, 16), (7, 20), (11, 28), ...
 
-(See, for example, `python primes.py maxevens 100000`)
+Verified for all prime numbers up to 40 million and all even numbers up to 100 million
+(`python primes.py maxevens 100000000`)
 
 This suggests a sliding window approach to generating all even numbers > 2 as sums of two primes
 by generating subsets of consecutive even numbers from subsets of consecutive primes.
