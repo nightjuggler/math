@@ -4,7 +4,7 @@ A script for analyzing [Goldbach partitions](https://en.wikipedia.org/wiki/Goldb
 
 Conjecture (12/31/2019):
 
-*For every prime P, there exists a threshold N such that every even number > N is the sum of two primes > P.*
+**For every prime P, there exists a threshold N such that every even number > N is the sum of two primes > P.**
 
 N is the lowest such threshold, i.e. N itself is not the sum of two primes > P.
 
