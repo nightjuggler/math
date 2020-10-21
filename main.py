@@ -2,7 +2,7 @@ def ordinal(n):
 	return str(n) + ("th", "st", "nd", "rd", "th", "th", "th", "th", "th", "th")[n % 10]
 
 def param_must_be(i, description):
-	print "The {} parameter after the command must be {}!".format(ordinal(i + 1), description)
+	print("The {} parameter after the command must be {}!".format(ordinal(i + 1), description))
 
 def parse_number(arg, convert=int):
 	try:
@@ -29,13 +29,13 @@ def run_command(args, default_command, commands):
 	command = args.pop(0) if args else default_command
 
 	if command not in commands:
-		print "Please enter a valid command!"
+		print("Please enter a valid command!")
 		return
 
 	function, params = commands[command]
 
 	if len(args) > len(params):
-		print "Too many parameters after the command!"
+		print("Too many parameters after the command!")
 		return
 
 	for i, (arg, param) in enumerate(zip(args, params)):
@@ -64,7 +64,7 @@ def run_command(args, default_command, commands):
 				param_must_be(i, "a comma-separated list of integers")
 				return
 		else:
-			print "Unable to parse the", ordinal(i+1), "parameter after the command!"
+			print("Unable to parse the", ordinal(i+1), "parameter after the command!")
 			return
 
 		params[i] = param

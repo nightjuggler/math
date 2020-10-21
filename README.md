@@ -12,7 +12,7 @@ N / P goes to 2 as P goes to infinity.
 
 For example, the first few pairs (P, N) are (2, 4), (3, 8), (5, 16), (7, 20), (11, 28), ...
 
-Verified for all prime numbers up to 40 million and all even numbers up to 100 million
+Verified for all prime numbers up to 40 million and all even numbers up to 100 million.
 (`python primes.py maxevens 100000000`)
 
 This suggests a sliding window approach to generating all even numbers > 2 as sums of two primes
