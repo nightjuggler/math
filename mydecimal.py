@@ -22,7 +22,7 @@ class MyDecimal(object):
 				raise TypeError('MyDecimal must be initialized from an int or str')
 			if not isinstance(precision, int):
 				raise TypeError('MyDecimal precision must be an int')
-		while not (value % 10):
+		while value and not (value % 10):
 			value //= 10
 			precision -= 1
 		self.value = value, precision
