@@ -5,18 +5,32 @@ class MyDecimal(object):
 		#
 		if isinstance(value, str):
 			value, *b = value.split('.')
-			if b:
-				b, = b
-				b = b.rstrip('0')
+			a, *csv = value.removeprefix('-').split(',')
+			if csv:
+				if not 1 <= len(a) <= 3 or a.strip('0123456789'):
+					raise ValueError('Not a valid decimal value')
+				if any(len(a) != 3 or a.strip('0123456789') for a in csv):
+					raise ValueError('Not a valid decimal value')
+				value = int(value.replace(',', ''))
 			else:
-				b = ''
-			value = int(value.replace(',', ''))
-			if precision := len(b):
-				value *= 10**precision
-				if value < 0:
-					value -= int(b)
-				else:
-					value += int(b)
+				if not a or a.strip('0123456789'):
+					raise ValueError('Not a valid decimal value')
+				value = int(value)
+			if not b:
+				precision = 0
+			else:
+				if len(b) > 1:
+					raise ValueError('Not a valid decimal value')
+				b, = b
+				if not b or b.strip('0123456789'):
+					raise ValueError('Not a valid decimal value')
+				b = b.rstrip('0')
+				if precision := len(b):
+					value *= 10**precision
+					if value < 0:
+						value -= int(b)
+					else:
+						value += int(b)
 		else:
 			if not isinstance(value, int):
 				raise TypeError('MyDecimal must be initialized from an int or str')
