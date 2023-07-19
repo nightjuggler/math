@@ -1,13 +1,16 @@
 class MyDecimal(object):
-	def __init__(self, value=(0, 0)):
+	def __init__(self, value=0, precision=0):
+		#
+		# The precision arg is ignored if the value is a string
+		#
 		if isinstance(value, str):
-			a, *b = value.split('.')
+			value, *b = value.split('.')
 			if b:
 				b, = b
 				b = b.rstrip('0')
 			else:
 				b = ''
-			value = int(a.replace(',', ''))
+			value = int(value.replace(',', ''))
 			if precision := len(b):
 				value *= 10**precision
 				if value < 0:
@@ -15,15 +18,26 @@ class MyDecimal(object):
 				else:
 					value += int(b)
 		else:
-			value, precision = value
+			if not isinstance(value, int):
+				raise TypeError('MyDecimal must be initialized from an int or str')
+			if not isinstance(precision, int):
+				raise TypeError('MyDecimal precision must be an int')
 		while not (value % 10):
 			value //= 10
 			precision -= 1
 		self.value = value, precision
 
-	def normalize(self, other):
+	@classmethod
+	def get_other(cls, other):
+		if isinstance(other, cls):
+			return other.value
+		if isinstance(other, int):
+			return other, 0
+		raise TypeError('Right operand must be MyDecimal or int')
+
+	def get_normalized(self, other):
 		v1, p1 = self.value
-		v2, p2 = other.value
+		v2, p2 = self.get_other(other)
 		if p1 < p2:
 			return v1 * 10**(p2-p1), v2, p2
 		return v1, v2 * 10**(p1-p2), p1
@@ -41,17 +55,17 @@ class MyDecimal(object):
 		return self
 
 	def __add__(self, other):
-		self, other, precision = self.normalize(other)
-		return MyDecimal((self + other, precision))
+		self, other, precision = self.get_normalized(other)
+		return MyDecimal(self + other, precision)
 
 	def __sub__(self, other):
-		self, other, precision = self.normalize(other)
-		return MyDecimal((self - other, precision))
+		self, other, precision = self.get_normalized(other)
+		return MyDecimal(self - other, precision)
 
 	def __mul__(self, other):
 		v1, p1 = self.value
-		v2, p2 = other.value
-		return MyDecimal((v1 * v2, p1 + p2))
+		v2, p2 = self.get_other(other)
+		return MyDecimal(v1 * v2, p1 + p2)
 
 	def __str__(self):
 		value, precision = self.value
@@ -73,25 +87,25 @@ class MyDecimal(object):
 		return hash(self.value)
 
 	def __lt__(self, other):
-		self, other, precision = self.normalize(other)
+		self, other, precision = self.get_normalized(other)
 		return self < other
 
 	def __le__(self, other):
-		self, other, precision = self.normalize(other)
+		self, other, precision = self.get_normalized(other)
 		return self <= other
 
 	def __eq__(self, other):
-		self, other, precision = self.normalize(other)
+		self, other, precision = self.get_normalized(other)
 		return self == other
 
 	def __ne__(self, other):
-		self, other, precision = self.normalize(other)
+		self, other, precision = self.get_normalized(other)
 		return self != other
 
 	def __gt__(self, other):
-		self, other, precision = self.normalize(other)
+		self, other, precision = self.get_normalized(other)
 		return self > other
 
 	def __ge__(self, other):
-		self, other, precision = self.normalize(other)
+		self, other, precision = self.get_normalized(other)
 		return self >= other
