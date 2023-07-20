@@ -5,8 +5,8 @@ class MyDecimal(object):
 		#
 		if isinstance(value, str):
 			value, *b = value.split('.')
-			negative = value.startswith('-')
-			a, *csv = value.removeprefix('-').split(',')
+			if negative := value[:1] == '-': value = value[1:]
+			a, *csv = value.split(',')
 			if csv:
 				if not 1 <= len(a) <= 3 or a.strip('0123456789') or a[0] == '0':
 					raise ValueError('Not a valid decimal value')
@@ -27,11 +27,9 @@ class MyDecimal(object):
 					raise ValueError('Not a valid decimal value')
 				b = b.rstrip('0')
 				if precision := len(b):
-					value *= 10**precision
-					if negative:
-						value -= int(b)
-					else:
-						value += int(b)
+					value = value * 10**precision + int(b)
+			if negative:
+				value = -value
 		else:
 			if not isinstance(value, int):
 				raise TypeError('MyDecimal must be initialized from an int or str')
