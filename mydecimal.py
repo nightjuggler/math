@@ -5,15 +5,16 @@ class MyDecimal(object):
 		#
 		if isinstance(value, str):
 			value, *b = value.split('.')
+			negative = value.startswith('-')
 			a, *csv = value.removeprefix('-').split(',')
 			if csv:
-				if not 1 <= len(a) <= 3 or a.strip('0123456789'):
+				if not 1 <= len(a) <= 3 or a.strip('0123456789') or a[0] == '0':
 					raise ValueError('Not a valid decimal value')
 				if any(len(a) != 3 or a.strip('0123456789') for a in csv):
 					raise ValueError('Not a valid decimal value')
 				value = int(value.replace(',', ''))
 			else:
-				if not a or a.strip('0123456789'):
+				if not a or a.strip('0123456789') or a[0] == '0' and len(a) > 1:
 					raise ValueError('Not a valid decimal value')
 				value = int(value)
 			if not b:
@@ -27,7 +28,7 @@ class MyDecimal(object):
 				b = b.rstrip('0')
 				if precision := len(b):
 					value *= 10**precision
-					if value < 0:
+					if negative:
 						value -= int(b)
 					else:
 						value += int(b)
@@ -36,9 +37,12 @@ class MyDecimal(object):
 				raise TypeError('MyDecimal must be initialized from an int or str')
 			if not isinstance(precision, int):
 				raise TypeError('MyDecimal precision must be an int')
-		while value and not (value % 10):
-			value //= 10
-			precision -= 1
+		if not value:
+			precision = 0
+		else:
+			while value % 10 == 0:
+				value //= 10
+				precision -= 1
 		self.value = value, precision
 
 	@classmethod
@@ -89,9 +93,9 @@ class MyDecimal(object):
 			return format(value * 10**-precision, ',')
 		if value < 0:
 			a, b = divmod(-value, 10**precision)
-			a = -a
-		else:
-			a, b = divmod(value, 10**precision)
+			return f'-{a:,}.{b:0{precision}}'
+
+		a, b = divmod(value, 10**precision)
 		return f'{a:,}.{b:0{precision}}'
 
 	def __repr__(self):
