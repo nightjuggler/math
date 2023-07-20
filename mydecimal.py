@@ -12,13 +12,13 @@ class MyDecimal(object):
 					raise ValueError('Not a valid decimal value')
 				if any(len(a) != 3 or a.strip('0123456789') for a in csv):
 					raise ValueError('Not a valid decimal value')
-				value = int(value.replace(',', ''))
+				value = value.replace(',', '')
 			else:
 				if not a or a.strip('0123456789') or a[0] == '0' and len(a) > 1:
 					raise ValueError('Not a valid decimal value')
-				value = int(value)
 			if not b:
 				precision = 0
+				value = int(value)
 			else:
 				if len(b) > 1:
 					raise ValueError('Not a valid decimal value')
@@ -26,8 +26,8 @@ class MyDecimal(object):
 				if not b or b.strip('0123456789'):
 					raise ValueError('Not a valid decimal value')
 				b = b.rstrip('0')
-				if precision := len(b):
-					value = value * 10**precision + int(b)
+				precision = len(b)
+				value = int(value + b)
 			if negative:
 				value = -value
 		else:
