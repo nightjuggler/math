@@ -1,7 +1,7 @@
 class MyDecimal(object):
 	def __init__(self, value=0, precision=0):
 		#
-		# The precision arg is ignored if the value is a string
+		# The precision arg is ignored if the value is 0 or a string
 		#
 		if isinstance(value, str):
 			value, *b = value.split('.')
@@ -125,3 +125,7 @@ class MyDecimal(object):
 	def __ge__(self, other):
 		self, other, precision = self.get_normalized(other)
 		return self >= other
+
+	def __bool__(self):
+		value, precision = self.value
+		return value != 0
